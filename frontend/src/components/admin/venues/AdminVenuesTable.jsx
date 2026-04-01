@@ -11,7 +11,7 @@ function datesSummary(venue) {
   return `${dates.length} dates`;
 }
 
-export function AdminVenuesTable({ venues }) {
+export function AdminVenuesTable({ venues, onDeleteClick }) {
   if (venues.length === 0) {
     return (
       <p className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 px-4 py-12 text-center text-sm text-gray-500">
@@ -47,6 +47,15 @@ export function AdminVenuesTable({ venues }) {
               >
                 Availability
               </Link>
+              {typeof onDeleteClick === "function" ? (
+                <button
+                  type="button"
+                  className="inline-flex rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50"
+                  onClick={() => onDeleteClick(v)}
+                >
+                  Delete
+                </button>
+              ) : null}
             </div>
           </li>
         ))}
@@ -92,6 +101,15 @@ export function AdminVenuesTable({ venues }) {
                     >
                       Availability
                     </Link>
+                    {typeof onDeleteClick === "function" ? (
+                      <button
+                        type="button"
+                        className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50"
+                        onClick={() => onDeleteClick(v)}
+                      >
+                        Delete
+                      </button>
+                    ) : null}
                   </div>
                 </td>
               </tr>

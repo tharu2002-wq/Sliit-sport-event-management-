@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { getVenues } from "../../../api/venues";
+import { deleteVenue, getVenues } from "../../../api/venues";
 import { AdminVenuesTable } from "../../../components/admin/venues/AdminVenuesTable";
+import { ConfirmDialog } from "../../../components/admin/events/ConfirmDialog";
 import { Button } from "../../../components/ui/Button";
 import { LoadingState } from "../../../components/ui/LoadingSpinner";
 import { SearchBar } from "../../../components/ui/SearchBar";
@@ -16,6 +17,8 @@ export default function AdminVenuesListPage() {
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const load = useCallback(async () => {
     setError("");
@@ -37,6 +40,20 @@ export default function AdminVenuesListPage() {
     () => filterVenues(venues, { searchQuery, status: statusFilter }),
     [venues, searchQuery, statusFilter]
   );
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget?._id) return;
+    setDeleteLoading(true);
+    try {
+      await deleteVenue(deleteTarget._id);
+      setDeleteTarget(null);
+      await load();
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Could not delete venue."));
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   return (
     <div>
@@ -96,9 +113,25 @@ export default function AdminVenuesListPage() {
             No venues match the current filters. Try clearing search or status.
           </p>
         ) : (
-          <AdminVenuesTable venues={filtered} />
+          <AdminVenuesTable venues={filtered} onDeleteClick={setDeleteTarget} />
         )}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="Delete this venue?"
+        message={
+          deleteTarget
+            ? `“${deleteTarget.venueName}” will be removed permanently. This cannot be undone.`
+            : ""
+        }
+        confirmLabel="Delete venue"
+        cancelLabel="Cancel"
+        danger
+        loading={deleteLoading}
+        onCancel={() => !deleteLoading && setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   );
 }

@@ -1,4 +1,11 @@
 const Venue = require("../models/Venue");
+const Event = require("../models/Event");
+const Match = require("../models/Match");
+
+function isDigitsOnly(str) {
+  const s = String(str ?? "").trim();
+  return s.length > 0 && /^[0-9]+$/.test(s);
+}
 
 // @desc    Create venue
 // @route   POST /api/venues
@@ -7,20 +14,30 @@ const createVenue = async (req, res) => {
   try {
     const { venueName, location, capacity, status, availableDates } = req.body;
 
-    if (!venueName || !location || !capacity) {
+    const nameTrim = String(venueName ?? "").trim();
+    const locationTrim = String(location ?? "").trim();
+
+    if (!nameTrim || !locationTrim || !capacity) {
       return res.status(400).json({
         message: "Venue name, location, and capacity are required",
       });
     }
 
-    const existingVenue = await Venue.findOne({ venueName });
+    if (isDigitsOnly(nameTrim)) {
+      return res.status(400).json({ message: "Venue name cannot be numbers only" });
+    }
+    if (isDigitsOnly(locationTrim)) {
+      return res.status(400).json({ message: "Location cannot be numbers only" });
+    }
+
+    const existingVenue = await Venue.findOne({ venueName: nameTrim });
     if (existingVenue) {
       return res.status(400).json({ message: "Venue name already exists" });
     }
 
     const venue = await Venue.create({
-      venueName,
-      location,
+      venueName: nameTrim,
+      location: locationTrim,
       capacity,
       status,
       availableDates,
@@ -74,18 +91,37 @@ const updateVenue = async (req, res) => {
       return res.status(404).json({ message: "Venue not found" });
     }
 
-    if (venueName && venueName !== venue.venueName) {
-      const existingVenue = await Venue.findOne({ venueName });
-      if (existingVenue) {
-        return res.status(400).json({ message: "Venue name already exists" });
+    if (venueName !== undefined) {
+      const nameTrim = String(venueName).trim();
+      if (!nameTrim) {
+        return res.status(400).json({ message: "Venue name cannot be empty" });
       }
+      if (isDigitsOnly(nameTrim)) {
+        return res.status(400).json({ message: "Venue name cannot be numbers only" });
+      }
+      if (nameTrim !== venue.venueName) {
+        const existingVenue = await Venue.findOne({ venueName: nameTrim });
+        if (existingVenue) {
+          return res.status(400).json({ message: "Venue name already exists" });
+        }
+      }
+      venue.venueName = nameTrim;
     }
 
-    if (venueName !== undefined) venue.venueName = venueName;
-if (location !== undefined) venue.location = location;
-if (capacity !== undefined) venue.capacity = capacity;
-if (status !== undefined) venue.status = status;
-if (availableDates !== undefined) venue.availableDates = availableDates;
+    if (location !== undefined) {
+      const locationTrim = String(location).trim();
+      if (!locationTrim) {
+        return res.status(400).json({ message: "Location cannot be empty" });
+      }
+      if (isDigitsOnly(locationTrim)) {
+        return res.status(400).json({ message: "Location cannot be numbers only" });
+      }
+      venue.location = locationTrim;
+    }
+
+    if (capacity !== undefined) venue.capacity = capacity;
+    if (status !== undefined) venue.status = status;
+    if (availableDates !== undefined) venue.availableDates = availableDates;
 
     const updatedVenue = await venue.save();
 
@@ -127,10 +163,41 @@ const updateVenueAvailability = async (req, res) => {
   }
 };
 
+// @desc    Delete venue
+// @route   DELETE /api/venues/:id
+// @access  Private (Admin, Organizer)
+const deleteVenue = async (req, res) => {
+  try {
+    const venue = await Venue.findById(req.params.id);
+
+    if (!venue) {
+      return res.status(404).json({ message: "Venue not found" });
+    }
+
+    const [eventCount, matchCount] = await Promise.all([
+      Event.countDocuments({ venue: venue._id }),
+      Match.countDocuments({ venue: venue._id }),
+    ]);
+
+    if (eventCount > 0 || matchCount > 0) {
+      return res.status(409).json({
+        message:
+          "This venue cannot be deleted because it is linked to one or more events or matches. Remove or reassign those first.",
+      });
+    }
+
+    await Venue.findByIdAndDelete(venue._id);
+    return res.status(200).json({ message: "Venue deleted successfully", id: String(venue._id) });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createVenue,
   getAllVenues,
   getVenueById,
   updateVenue,
   updateVenueAvailability,
+  deleteVenue,
 };
