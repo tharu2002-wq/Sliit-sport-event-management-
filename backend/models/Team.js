@@ -11,6 +11,19 @@ const teamSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    society: {
+      type: String,
+      trim: true,
+    },
+    contactEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+    contactPhone: {
+      type: String,
+      trim: true,
+    },
     captain: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Player",

@@ -1,12 +1,39 @@
 const Team = require("../models/Team");
 const Player = require("../models/Player");
+const Event = require("../models/Event");
+const Match = require("../models/Match");
+const Result = require("../models/Result");
+
+async function findPlayersAlreadyInOtherTeams(memberIds, excludedTeamId = null) {
+  const query = { members: { $in: memberIds }, isActive: { $ne: false } };
+  if (excludedTeamId) {
+    query._id = { $ne: excludedTeamId };
+  }
+
+  const teamsWithMembers = await Team.find(query)
+    .select("teamName members")
+    .lean();
+
+  const conflicts = new Map();
+  for (const t of teamsWithMembers) {
+    for (const memberId of t.members || []) {
+      const sid = memberId.toString();
+      if (!memberIds.includes(sid)) continue;
+      if (!conflicts.has(sid)) {
+        conflicts.set(sid, t.teamName || "another team");
+      }
+    }
+  }
+
+  return conflicts;
+}
 
 // @desc    Create team
 // @route   POST /api/teams
 // @access  Private (Admin, Organizer)
 const createTeam = async (req, res) => {
   try {
-    const { teamName, sportType, captain, members, scheduleNotes } = req.body;
+    const { teamName, sportType, society, contactEmail, contactPhone, captain, members, scheduleNotes } = req.body;
 
     if (!teamName || !sportType) {
       return res.status(400).json({ message: "Team name and sport type are required" });
@@ -38,9 +65,23 @@ const createTeam = async (req, res) => {
       }
     }
 
+    const memberIdStrings = [...new Set(validatedMembers.map((id) => id.toString()))];
+    if (memberIdStrings.length > 0) {
+      const conflicts = await findPlayersAlreadyInOtherTeams(memberIdStrings);
+      if (conflicts.size > 0) {
+        return res.status(400).json({
+          message: "One or more players are already assigned to another team",
+          conflicts: Object.fromEntries(conflicts),
+        });
+      }
+    }
+
     const team = await Team.create({
       teamName,
       sportType,
+      society,
+      contactEmail,
+      contactPhone,
       captain: captain || null,
       members: validatedMembers,
       scheduleNotes,
@@ -141,6 +182,15 @@ const addMembersToTeam = async (req, res) => {
     const foundPlayers = await Player.find({ _id: { $in: memberIds } });
     if (foundPlayers.length !== memberIds.length) {
       return res.status(400).json({ message: "One or more member IDs are invalid" });
+    }
+
+    const normalizedIncoming = [...new Set(memberIds.map((id) => id.toString()))];
+    const conflicts = await findPlayersAlreadyInOtherTeams(normalizedIncoming, team._id);
+    if (conflicts.size > 0) {
+      return res.status(400).json({
+        message: "One or more players are already assigned to another team",
+        conflicts: Object.fromEntries(conflicts),
+      });
     }
 
     memberIds.forEach((id) => {
@@ -252,6 +302,41 @@ const deactivateTeam = async (req, res) => {
   }
 };
 
+// @desc    Delete team permanently
+// @route   DELETE /api/teams/:id
+// @access  Private (Admin, Organizer)
+const deleteTeam = async (req, res) => {
+  try {
+    const team = await Team.findById(req.params.id);
+
+    if (!team) {
+      return res.status(404).json({ message: "Team not found" });
+    }
+
+    const [eventRefCount, matchRefCount, resultRefCount] = await Promise.all([
+      Event.countDocuments({ teams: team._id }),
+      Match.countDocuments({ $or: [{ teamA: team._id }, { teamB: team._id }] }),
+      Result.countDocuments({ winner: team._id }),
+    ]);
+
+    if (eventRefCount > 0 || matchRefCount > 0 || resultRefCount > 0) {
+      return res.status(400).json({
+        message:
+          "Cannot delete this team because it is linked to events, matches, or results. Deactivate it instead.",
+      });
+    }
+
+    await Player.updateMany({ team: team._id }, { $set: { team: null } });
+    await Event.updateMany({ teams: team._id }, { $pull: { teams: team._id } });
+
+    await Team.findByIdAndDelete(team._id);
+
+    return res.status(200).json({ message: "Team deleted successfully", _id: team._id });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createTeam,
   getAllTeams,
@@ -261,4 +346,5 @@ module.exports = {
   removeMemberFromTeam,
   assignCaptain,
   deactivateTeam,
+  deleteTeam,
 };

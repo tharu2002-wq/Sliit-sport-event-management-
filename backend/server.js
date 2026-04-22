@@ -18,6 +18,8 @@ app.get("/", (req, res) => {
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/players", require("./routes/playerRoutes"));
+app.use("/api/player-requests", require("./routes/playerRequestRoutes"));
+app.use("/api/team-requests", require("./routes/teamRequestRoutes"));
 app.use("/api/teams", require("./routes/teamRoutes"));
 app.use("/api/venues", require("./routes/venueRoutes"));
 app.use("/api/events", require("./routes/eventRoutes"));

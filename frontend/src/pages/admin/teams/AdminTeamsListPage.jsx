@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { getTeams } from "../../../api/teams";
+import { deleteTeam, getTeams } from "../../../api/teams";
 import { AdminTeamsTable } from "../../../components/admin/teams/AdminTeamsTable";
 import { Button } from "../../../components/ui/Button";
 import { SearchBar } from "../../../components/ui/SearchBar";
@@ -21,6 +21,7 @@ export default function AdminTeamsListPage() {
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [deletingTeamId, setDeletingTeamId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
@@ -53,6 +54,23 @@ export default function AdminTeamsListPage() {
     });
   }, [teams, searchQuery, statusFilter]);
 
+  const handleDeleteTeam = useCallback(async (team) => {
+    if (!team?._id) return;
+    const ok = window.confirm(`Delete team \"${team.teamName ?? "this team"}\" permanently?`);
+    if (!ok) return;
+
+    setDeletingTeamId(team._id);
+    setError("");
+    try {
+      await deleteTeam(team._id);
+      setTeams((prev) => prev.filter((t) => t._id !== team._id));
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Could not delete team."));
+    } finally {
+      setDeletingTeamId("");
+    }
+  }, []);
+
   return (
     <div>
       <div className="flex flex-col gap-4 border-b border-gray-100 pb-6 md:flex-row md:items-end md:justify-between">
@@ -63,9 +81,14 @@ export default function AdminTeamsListPage() {
             page.
           </p>
         </div>
-        <Button to="/admin/teams/new" variant="primary" size="sm" className="shrink-0">
-          Create team
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button to="/admin/team-requests" variant="outline" size="sm" className="shrink-0">
+            Team requests
+          </Button>
+          <Button to="/admin/teams/new" variant="primary" size="sm" className="shrink-0">
+            Create team
+          </Button>
+        </div>
       </div>
 
       {error ? (
@@ -112,7 +135,7 @@ export default function AdminTeamsListPage() {
             No teams match the current filters.
           </p>
         ) : (
-          <AdminTeamsTable teams={filtered} />
+          <AdminTeamsTable teams={filtered} deletingTeamId={deletingTeamId} onDeleteTeam={handleDeleteTeam} />
         )}
       </div>
     </div>

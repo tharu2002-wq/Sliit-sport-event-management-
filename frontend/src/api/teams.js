@@ -32,6 +32,11 @@ export async function deactivateTeam(id) {
   return data;
 }
 
+export async function deleteTeam(id) {
+  const { data } = await api.delete(`/teams/${id}`);
+  return data;
+}
+
 /**
  * @param {string} teamId
  * @param {string[]} memberIds

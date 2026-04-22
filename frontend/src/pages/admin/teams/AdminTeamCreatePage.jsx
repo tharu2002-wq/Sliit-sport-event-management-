@@ -11,6 +11,15 @@ import { getApiErrorMessage } from "../../../utils/apiError";
 import { getTitleOrSportTypeError } from "../../../utils/eventValidation";
 import { refToId } from "../../../utils/eventFormUtils";
 
+const SOCIETY_OPTIONS = [
+  "Sliit",
+  "IEEE",
+  "FOSS",
+  "Rotaract",
+  "Leo",
+  "Other",
+];
+
 export default function AdminTeamCreatePage() {
   const navigate = useNavigate();
   const [players, setPlayers] = useState([]);
@@ -21,6 +30,9 @@ export default function AdminTeamCreatePage() {
 
   const [teamName, setTeamName] = useState("");
   const [sportType, setSportType] = useState("");
+  const [society, setSociety] = useState("Sliit");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [memberIds, setMemberIds] = useState([]);
   const [captainId, setCaptainId] = useState("");
 
@@ -46,18 +58,45 @@ export default function AdminTeamCreatePage() {
     return players.filter((p) => set.has(String(p._id)));
   }, [players, memberIds]);
 
+  const memberIdsSet = useMemo(() => new Set(memberIds.map(String)), [memberIds]);
+
   useEffect(() => {
     if (captainId && !memberIds.map(String).includes(String(captainId))) {
       setCaptainId("");
     }
   }, [memberIds, captainId]);
 
+  const getAssignedTeamLabel = (player) => {
+    if (!Array.isArray(player?.teams) || player.teams.length === 0) return "";
+    const firstTeam = player.teams.find((team) => team?.isActive !== false);
+    if (!firstTeam) return "";
+    const teamName = typeof firstTeam?.teamName === "string" ? firstTeam.teamName.trim() : "";
+    if (!teamName) return "Already in another team";
+    return `Already in ${teamName}`;
+  };
+
   const validate = () => {
     const next = {};
     if (!teamName.trim()) next.teamName = "Team name is required";
     const sportErr = getTitleOrSportTypeError(sportType, "Sport type");
     if (sportErr) next.sportType = sportErr;
+    if (!society.trim()) next.society = "Society is required";
+    const email = contactEmail.trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      next.contactEmail = "Please enter a valid email address.";
+    }
+    const phone = contactPhone.trim();
+    if (phone && !/^[+]?[-()\d\s]{7,20}$/.test(phone)) {
+      next.contactPhone = "Please enter a valid contact number.";
+    }
     if (memberIds.length === 0) next.members = "Select at least one player";
+    const blockedSelected = players.some(
+      (p) =>
+        memberIdsSet.has(String(p._id)) &&
+        Array.isArray(p.teams) &&
+        p.teams.some((team) => team?.isActive !== false)
+    );
+    if (blockedSelected) next.members = "Players already assigned to another team cannot be selected.";
     if (!captainId) next.captain = "Captain is required";
     if (captainId && !memberIds.map(String).includes(String(captainId))) {
       next.captain = "Captain must be one of the selected players";
@@ -76,6 +115,9 @@ export default function AdminTeamCreatePage() {
       await createTeam({
         teamName: teamName.trim(),
         sportType: sportType.trim(),
+        society: society.trim(),
+        contactEmail: contactEmail.trim() || undefined,
+        contactPhone: contactPhone.trim() || undefined,
         captain: captainId,
         members,
       });
@@ -115,7 +157,7 @@ export default function AdminTeamCreatePage() {
         </p>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="mt-8 max-w-3xl space-y-6">
+      <form onSubmit={handleSubmit} className="mt-8 max-w-5xl space-y-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField
             id="team-name"
@@ -138,15 +180,65 @@ export default function AdminTeamCreatePage() {
           />
         </div>
 
+        <SelectField
+          id="team-society"
+          name="society"
+          label="Society"
+          value={society}
+          onChange={(e) => setSociety(e.target.value)}
+          error={fieldErrors.society}
+          required
+        >
+          <option value="">Select society…</option>
+          {SOCIETY_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </SelectField>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField
+            id="team-contact-email"
+            name="contactEmail"
+            label="Team Contact Email"
+            value={contactEmail}
+            onChange={(e) => setContactEmail(e.target.value)}
+            error={fieldErrors.contactEmail}
+            placeholder="team@example.com"
+          />
+          <TextField
+            id="team-contact-phone"
+            name="contactPhone"
+            label="Team Contact Phone"
+            value={contactPhone}
+            onChange={(e) => setContactPhone(e.target.value)}
+            error={fieldErrors.contactPhone}
+            placeholder="0771234567"
+          />
+        </div>
+
         <div>
           <p className="mb-1.5 text-sm font-semibold text-gray-700">Players</p>
-          <p className="mb-2 text-xs text-gray-500">Select at least one player. The captain must be chosen from this list.</p>
+          <p className="mb-1 text-xs text-gray-500">Select at least one player. The captain must be chosen from this list.</p>
+          <p className="mb-2 text-xs text-gray-500">Players already assigned to another team are disabled.</p>
           {fieldErrors.members ? (
             <p className="mb-2 text-sm text-red-600" role="alert">
               {fieldErrors.members}
             </p>
           ) : null}
-          <PlayerPicker players={players} selectedIds={memberIds} onChange={setMemberIds} disabled={saving} />
+          <PlayerPicker
+            players={players}
+            selectedIds={memberIds}
+            onChange={setMemberIds}
+            disabled={saving}
+            showSearch
+            searchPlaceholder="Search players by name or email..."
+            isOptionDisabled={(player) => {
+              if (memberIdsSet.has(String(player._id))) return "";
+              return getAssignedTeamLabel(player);
+            }}
+          />
         </div>
 
         <SelectField

@@ -10,6 +10,7 @@ const {
   removeMemberFromTeam,
   assignCaptain,
   deactivateTeam,
+  deleteTeam,
 } = require("../controllers/teamController");
 
 const { protect, authorizeRoles } = require("../middleware/authMiddleware");
@@ -45,6 +46,13 @@ router.patch(
   protect,
   authorizeRoles("admin", "organizer"),
   deactivateTeam
+);
+
+router.delete(
+  "/:id",
+  protect,
+  authorizeRoles("admin", "organizer"),
+  deleteTeam
 );
 
 module.exports = router;
