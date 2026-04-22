@@ -1,350 +1,219 @@
-const Team = require("../models/Team");
-const Player = require("../models/Player");
-const Event = require("../models/Event");
-const Match = require("../models/Match");
-const Result = require("../models/Result");
+import Team from "../models/Team.js";
+import Society from "../models/Society.js";
+import generateId from "../utils/generateId.js";
 
-async function findPlayersAlreadyInOtherTeams(memberIds, excludedTeamId = null) {
-  const query = { members: { $in: memberIds }, isActive: { $ne: false } };
-  if (excludedTeamId) {
-    query._id = { $ne: excludedTeamId };
+const syncTeamCount = async (societyId) => {
+  const count = await Team.countDocuments({ society: societyId });
+  await Society.findByIdAndUpdate(societyId, { teamCount: count });
+};
+
+const normalizeMemberKey = (value) => String(value || "").trim().toLowerCase();
+
+const normalizeMembers = (members) => {
+  if (!Array.isArray(members)) {
+    return [];
   }
 
-  const teamsWithMembers = await Team.find(query)
-    .select("teamName members")
-    .lean();
+  const normalized = members
+    .map((member) => String(member || "").trim())
+    .filter(Boolean);
 
-  const conflicts = new Map();
-  for (const t of teamsWithMembers) {
-    for (const memberId of t.members || []) {
-      const sid = memberId.toString();
-      if (!memberIds.includes(sid)) continue;
-      if (!conflicts.has(sid)) {
-        conflicts.set(sid, t.teamName || "another team");
-      }
-    }
-  }
+  return [...new Set(normalized)];
+};
 
-  return conflicts;
-}
 
-// @desc    Create team
-// @route   POST /api/teams
-// @access  Private (Admin, Organizer)
-const createTeam = async (req, res) => {
+
+const getTeams = async (req, res, next) => {
   try {
-    const { teamName, sportType, society, contactEmail, contactPhone, captain, members, scheduleNotes } = req.body;
-
-    if (!teamName || !sportType) {
-      return res.status(400).json({ message: "Team name and sport type are required" });
-    }
-
-    const existingTeam = await Team.findOne({ teamName });
-    if (existingTeam) {
-      return res.status(400).json({ message: "Team name already exists" });
-    }
-
-    let validatedMembers = [];
-
-    if (members && members.length > 0) {
-      const foundPlayers = await Player.find({ _id: { $in: members } });
-      if (foundPlayers.length !== members.length) {
-        return res.status(400).json({ message: "One or more member IDs are invalid" });
-      }
-      validatedMembers = members;
-    }
-
-    if (captain) {
-      const captainPlayer = await Player.findById(captain);
-      if (!captainPlayer) {
-        return res.status(400).json({ message: "Captain player not found" });
-      }
-
-      if (!validatedMembers.includes(captain)) {
-        validatedMembers.push(captain);
-      }
-    }
-
-    const memberIdStrings = [...new Set(validatedMembers.map((id) => id.toString()))];
-    if (memberIdStrings.length > 0) {
-      const conflicts = await findPlayersAlreadyInOtherTeams(memberIdStrings);
-      if (conflicts.size > 0) {
-        return res.status(400).json({
-          message: "One or more players are already assigned to another team",
-          conflicts: Object.fromEntries(conflicts),
-        });
-      }
-    }
-
-    const team = await Team.create({
-      teamName,
-      sportType,
-      society,
-      contactEmail,
-      contactPhone,
-      captain: captain || null,
-      members: validatedMembers,
-      scheduleNotes,
-    });
-
-    return res.status(201).json(team);
+    const filter = req.query.societyId ? { society: req.query.societyId } : {};
+    const teams = await Team.find(filter).populate("society", "name customId").sort({ createdAt: -1 });
+    res.status(200).json(teams);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-// @desc    Get all teams
-// @route   GET /api/teams
-// @access  Private
-const getAllTeams = async (req, res) => {
+const getMyTeamRequests = async (req, res, next) => {
   try {
-    const teams = await Team.find()
-      .populate("captain", "fullName studentId email")
-      .populate("members", "fullName studentId email")
+    const teams = await Team.find({ createdBy: req.user._id })
+      .populate("society", "name customId")
       .sort({ createdAt: -1 });
 
-    return res.status(200).json(teams);
+    res.status(200).json(teams);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-// @desc    Get single team
-// @route   GET /api/teams/:id
-// @access  Private
-const getTeamById = async (req, res) => {
+const createTeam = async (req, res, next) => {
   try {
-    const team = await Team.findById(req.params.id)
-      .populate("captain", "fullName studentId email")
-      .populate("members", "fullName studentId email");
+    const society = await Society.findById(req.body.society);
+    const captainName = req.body.captain ?? req.body.coach ?? "";
+    const coachName = req.body.coach ?? req.body.captain ?? "";
+    const normalizedMembers = normalizeMembers(req.body.members);
 
-    if (!team) {
-      return res.status(404).json({ message: "Team not found" });
+    if (!society) {
+      res.status(404);
+      throw new Error("Selected society not found");
     }
 
-    return res.status(200).json(team);
+    const isStudent = req.user?.role === "Student";
+
+
+
+    const team = await Team.create({
+      customId: generateId("TEAM"),
+      society: req.body.society,
+      name: req.body.name,
+      category: req.body.category,
+      captain: captainName,
+      photoUrl: req.body.photoUrl,
+      coach: coachName,
+      members: normalizedMembers,
+      achievements: req.body.achievements || [],
+      status: isStudent ? "pending" : req.body.status || "pending",
+      rejectionReason: "",
+      adminMessage: "",
+      contactEmail: req.body.contactEmail || "",
+      contactPhone: req.body.contactPhone || "",
+      createdBy: req.user?._id || null,
+    });
+
+    await syncTeamCount(req.body.society);
+
+    res.status(201).json(team);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-// @desc    Update team
-// @route   PUT /api/teams/:id
-// @access  Private (Admin, Organizer)
-const updateTeam = async (req, res) => {
+const updateTeam = async (req, res, next) => {
   try {
-    const { teamName, sportType, scheduleNotes, isActive } = req.body;
-
     const team = await Team.findById(req.params.id);
+
     if (!team) {
-      return res.status(404).json({ message: "Team not found" });
+      res.status(404);
+      throw new Error("Team not found");
     }
 
-    if (teamName && teamName !== team.teamName) {
-      const existingTeam = await Team.findOne({ teamName });
-      if (existingTeam) {
-        return res.status(400).json({ message: "Team name already exists" });
+    const isStudent = req.user?.role === "Student";
+    const isAdmin = req.user?.role === "Admin";
+
+    if (isStudent) {
+      const ownsTeam = team.createdBy && team.createdBy.toString() === req.user._id.toString();
+      if (!ownsTeam) {
+        res.status(403);
+        throw new Error("You can only update your own team requests");
+      }
+
+      if (team.status === "active") {
+        res.status(400);
+        throw new Error("Approved teams cannot be edited by students");
       }
     }
 
-    team.teamName = teamName || team.teamName;
-    team.sportType = sportType || team.sportType;
-    team.scheduleNotes = scheduleNotes ?? team.scheduleNotes;
-
-    if (typeof isActive === "boolean") {
-      team.isActive = isActive;
+    if (!isAdmin && req.body.status !== undefined) {
+      delete req.body.status;
     }
 
-    const updatedTeam = await team.save();
-
-    return res.status(200).json(updatedTeam);
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-// @desc    Add members to team
-// @route   PATCH /api/teams/:id/members/add
-// @access  Private (Admin, Organizer)
-const addMembersToTeam = async (req, res) => {
-  try {
-    const { memberIds } = req.body;
-
-    if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
-      return res.status(400).json({ message: "memberIds array is required" });
+    if (req.body.society !== undefined && req.body.society !== team.society.toString()) {
+      const society = await Society.findById(req.body.society);
+      if (!society) {
+        res.status(404);
+        throw new Error("Selected society not found");
+      }
     }
 
-    const team = await Team.findById(req.params.id);
-    if (!team) {
-      return res.status(404).json({ message: "Team not found" });
+    const previousSociety = team.society.toString();
+
+    if (req.body.members !== undefined) {
+      const normalizedMembers = normalizeMembers(req.body.members);
+
+      req.body.members = normalizedMembers;
     }
 
-    const foundPlayers = await Player.find({ _id: { $in: memberIds } });
-    if (foundPlayers.length !== memberIds.length) {
-      return res.status(400).json({ message: "One or more member IDs are invalid" });
-    }
+    const fields = ["society", "name", "category", "captain", "coach", "photoUrl", "members", "achievements", "status", "rejectionReason", "contactEmail", "contactPhone"];
 
-    const normalizedIncoming = [...new Set(memberIds.map((id) => id.toString()))];
-    const conflicts = await findPlayersAlreadyInOtherTeams(normalizedIncoming, team._id);
-    if (conflicts.size > 0) {
-      return res.status(400).json({
-        message: "One or more players are already assigned to another team",
-        conflicts: Object.fromEntries(conflicts),
-      });
-    }
 
-    memberIds.forEach((id) => {
-      if (!team.members.includes(id)) {
-        team.members.push(id);
+    fields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        team[field] = req.body[field];
       }
     });
 
-    const updatedTeam = await team.save();
+    if (isStudent) {
+      team.status = "pending";
+      team.rejectionReason = "";
+      team.adminMessage = "";
+      team.reviewedBy = null;
+      team.reviewedAt = null;
+    }
 
-    return res.status(200).json(updatedTeam);
+    if (req.body.captain !== undefined) {
+      team.captain = req.body.captain;
+    } else if (req.body.coach !== undefined) {
+      team.coach = req.body.coach;
+    }
+
+    await team.save();
+
+    await syncTeamCount(previousSociety);
+    await syncTeamCount(team.society);
+
+    res.status(200).json(team);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-// @desc    Remove member from team
-// @route   PATCH /api/teams/:id/members/remove
-// @access  Private (Admin, Organizer)
-const removeMemberFromTeam = async (req, res) => {
-  try {
-    const { memberId } = req.body;
-
-    if (!memberId) {
-      return res.status(400).json({ message: "memberId is required" });
-    }
-
-    const team = await Team.findById(req.params.id);
-    if (!team) {
-      return res.status(404).json({ message: "Team not found" });
-    }
-
-    team.members = team.members.filter(
-      (id) => id.toString() !== memberId.toString()
-    );
-
-    if (team.captain && team.captain.toString() === memberId.toString()) {
-      team.captain = null;
-    }
-
-    const updatedTeam = await team.save();
-
-    return res.status(200).json(updatedTeam);
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-// @desc    Assign captain
-// @route   PATCH /api/teams/:id/captain
-// @access  Private (Admin, Organizer)
-const assignCaptain = async (req, res) => {
-  try {
-    const { captainId } = req.body;
-
-    if (!captainId) {
-      return res.status(400).json({ message: "captainId is required" });
-    }
-
-    const team = await Team.findById(req.params.id);
-    if (!team) {
-      return res.status(404).json({ message: "Team not found" });
-    }
-
-    const player = await Player.findById(captainId);
-    if (!player) {
-      return res.status(404).json({ message: "Player not found" });
-    }
-
-    const isMember = team.members.some(
-      (member) => member.toString() === captainId.toString()
-    );
-
-    if (!isMember) {
-      return res.status(400).json({ message: "Captain must be a team member" });
-    }
-
-    team.captain = captainId;
-
-    const updatedTeam = await team.save();
-
-    return res.status(200).json(updatedTeam);
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-// @desc    Deactivate team
-// @route   PATCH /api/teams/:id/deactivate
-// @access  Private (Admin, Organizer)
-const deactivateTeam = async (req, res) => {
+const reviewTeamRequest = async (req, res, next) => {
   try {
     const team = await Team.findById(req.params.id);
 
     if (!team) {
-      return res.status(404).json({ message: "Team not found" });
+      res.status(404);
+      throw new Error("Team not found");
     }
 
-    team.isActive = false;
+    const { status, adminMessage = "" } = req.body;
+    const message = String(adminMessage).trim();
 
-    const updatedTeam = await team.save();
+    team.status = status;
+    team.adminMessage = message;
+    team.reviewedBy = req.user._id;
+    team.reviewedAt = new Date();
 
-    return res.status(200).json({
-      message: "Team deactivated successfully",
-      team: updatedTeam,
-    });
+    if (status === "rejected") {
+      team.rejectionReason = message;
+    } else {
+      team.rejectionReason = "";
+    }
+
+    await team.save();
+
+    res.status(200).json(team);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-// @desc    Delete team permanently
-// @route   DELETE /api/teams/:id
-// @access  Private (Admin, Organizer)
-const deleteTeam = async (req, res) => {
+const deleteTeam = async (req, res, next) => {
   try {
     const team = await Team.findById(req.params.id);
 
     if (!team) {
-      return res.status(404).json({ message: "Team not found" });
+      res.status(404);
+      throw new Error("Team not found");
     }
 
-    const [eventRefCount, matchRefCount, resultRefCount] = await Promise.all([
-      Event.countDocuments({ teams: team._id }),
-      Match.countDocuments({ $or: [{ teamA: team._id }, { teamB: team._id }] }),
-      Result.countDocuments({ winner: team._id }),
-    ]);
+    const societyId = team.society;
+    await team.deleteOne();
+    await syncTeamCount(societyId);
 
-    if (eventRefCount > 0 || matchRefCount > 0 || resultRefCount > 0) {
-      return res.status(400).json({
-        message:
-          "Cannot delete this team because it is linked to events, matches, or results. Deactivate it instead.",
-      });
-    }
-
-    await Player.updateMany({ team: team._id }, { $set: { team: null } });
-    await Event.updateMany({ teams: team._id }, { $pull: { teams: team._id } });
-
-    await Team.findByIdAndDelete(team._id);
-
-    return res.status(200).json({ message: "Team deleted successfully", _id: team._id });
+    res.status(200).json({ message: "Team deleted successfully" });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-module.exports = {
-  createTeam,
-  getAllTeams,
-  getTeamById,
-  updateTeam,
-  addMembersToTeam,
-  removeMemberFromTeam,
-  assignCaptain,
-  deactivateTeam,
-  deleteTeam,
-};
+export { getTeams, getMyTeamRequests, createTeam, updateTeam, reviewTeamRequest, deleteTeam };

@@ -1,58 +1,31 @@
-const express = require("express");
+import express from "express";
+import {
+	createTeam,
+	deleteTeam,
+	getMyTeamRequests,
+	getTeams,
+	reviewTeamRequest,
+	updateTeam,
+} from "../controllers/teamController.js";
+import { authorizeRoles, protect } from "../middleware/authMiddleware.js";
+import {
+	validateCreateTeam,
+	validateIdParam,
+	validateTeamReview,
+	validateTeamListQuery,
+	validateUpdateTeam,
+} from "../middleware/validationMiddleware.js";
+
 const router = express.Router();
 
-const {
-  createTeam,
-  getAllTeams,
-  getTeamById,
-  updateTeam,
-  addMembersToTeam,
-  removeMemberFromTeam,
-  assignCaptain,
-  deactivateTeam,
-  deleteTeam,
-} = require("../controllers/teamController");
+router.route("/").get(validateTeamListQuery, getTeams).post(protect, validateCreateTeam, createTeam);
+router.route("/my-requests").get(protect, authorizeRoles("Student"), getMyTeamRequests);
+router
+	.route("/:id/review")
+	.patch(protect, authorizeRoles("Admin"), validateIdParam, validateTeamReview, reviewTeamRequest);
+router
+	.route("/:id")
+	.put(protect, validateIdParam, validateUpdateTeam, updateTeam)
+	.delete(protect, authorizeRoles("Admin"), validateIdParam, deleteTeam);
 
-const { protect, authorizeRoles } = require("../middleware/authMiddleware");
-
-router.post("/", protect, authorizeRoles("admin", "organizer"), createTeam);
-router.get("/", protect, getAllTeams);
-router.get("/:id", protect, getTeamById);
-router.put("/:id", protect, authorizeRoles("admin", "organizer"), updateTeam);
-
-router.patch(
-  "/:id/members/add",
-  protect,
-  authorizeRoles("admin", "organizer"),
-  addMembersToTeam
-);
-
-router.patch(
-  "/:id/members/remove",
-  protect,
-  authorizeRoles("admin", "organizer"),
-  removeMemberFromTeam
-);
-
-router.patch(
-  "/:id/captain",
-  protect,
-  authorizeRoles("admin", "organizer"),
-  assignCaptain
-);
-
-router.patch(
-  "/:id/deactivate",
-  protect,
-  authorizeRoles("admin", "organizer"),
-  deactivateTeam
-);
-
-router.delete(
-  "/:id",
-  protect,
-  authorizeRoles("admin", "organizer"),
-  deleteTeam
-);
-
-module.exports = router;
+export default router;

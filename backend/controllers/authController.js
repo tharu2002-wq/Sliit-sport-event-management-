@@ -1,80 +1,75 @@
-const bcrypt = require("bcryptjs");
-const User = require("../models/User");
-const generateToken = require("../config/generateToken");
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
-// @desc    Register user
-// @route   POST /api/auth/register
-// @access  Public
-const registerUser = async (req, res) => {
+const createToken = (userId) =>
+  jwt.sign({ userId }, process.env.JWT_SECRET || "dev-secret-key", {
+    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+  });
+
+const sanitizeUser = (user) => ({
+  id: user._id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+});
+
+const registerByRole = (role) => async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: "Please fill all required fields" });
+    const existing = await User.findOne({ email });
+    if (existing) {
+      res.status(409);
+      throw new Error("Email already exists");
     }
 
-    const userExists = await User.findOne({ email });
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await User.create({ name, email, passwordHash, role });
+    const token = createToken(user._id);
 
-    if (userExists) {
-      return res.status(400).json({ message: "User already exists" });
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      role,
-    });
-
-    if (user) {
-      return res.status(201).json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        token: generateToken(user._id),
-      });
-    } else {
-      return res.status(400).json({ message: "Invalid user data" });
-    }
+    res.status(201).json({ token, user: sanitizeUser(user) });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
-const loginUser = async (req, res) => {
+const loginByRole = (role) => async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: "Please provide email and password" });
+    const user = await User.findOne({ email, role });
+    if (!user) {
+      res.status(401);
+      throw new Error(`Invalid credentials for ${role} role`);
     }
 
-    const user = await User.findOne({ email });
-
-    if (user && (await bcrypt.compare(password, user.password))) {
-      return res.status(200).json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        token: generateToken(user._id),
-      });
-    } else {
-      return res.status(401).json({ message: "Invalid email or password" });
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!isMatch) {
+      res.status(401);
+      throw new Error(`Invalid credentials for ${role} role`);
     }
+
+
+
+    const token = createToken(user._id);
+    res.status(200).json({ token, user: sanitizeUser(user) });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-module.exports = {
-  registerUser,
-  loginUser,
+const getCurrentUser = async (req, res, next) => {
+  try {
+    res.status(200).json({ user: sanitizeUser(req.user) });
+  } catch (error) {
+    next(error);
+  }
 };
+
+const registerAdmin = registerByRole("Admin");
+const registerStudent = registerByRole("Student");
+const loginAdmin = loginByRole("Admin");
+const loginStudent = loginByRole("Student");
+
+export { registerAdmin, registerStudent, loginAdmin, loginStudent, getCurrentUser };

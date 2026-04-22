@@ -1,149 +1,137 @@
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
-import { RequireAuth } from "./components/auth/RequireAuth";
-import { RequireRole } from "./components/auth/RequireRole";
-import { ADMIN_NAV_ITEMS } from "./constants/adminDashboardNav";
-import { AdminDashboardLayout } from "./layouts/AdminDashboardLayout";
-import { StudentDashboardLayout } from "./layouts/StudentDashboardLayout";
-import AdminSectionPage from "./pages/admin/AdminSectionPage";
-import AdminEventFormPage from "./pages/admin/events/AdminEventFormPage";
-import AdminEventsListPage from "./pages/admin/events/AdminEventsListPage";
-import AdminMatchFormPage from "./pages/admin/matches/AdminMatchFormPage";
-import AdminMatchesListPage from "./pages/admin/matches/AdminMatchesListPage";
-import AdminTeamCreatePage from "./pages/admin/teams/AdminTeamCreatePage";
-import AdminTeamDetailPage from "./pages/admin/teams/AdminTeamDetailPage";
-import AdminTeamRequestsPage from "./pages/admin/team-requests/AdminTeamRequestsPage";
-import AdminPlayerFormPage from "./pages/admin/players/AdminPlayerFormPage";
-import AdminPlayersListPage from "./pages/admin/players/AdminPlayersListPage";
-import AdminPlayerRequestsPage from "./pages/admin/player-requests/AdminPlayerRequestsPage";
-import AdminTeamsListPage from "./pages/admin/teams/AdminTeamsListPage";
-import AdminVenueFormPage from "./pages/admin/venues/AdminVenueFormPage";
-import AdminVenuesListPage from "./pages/admin/venues/AdminVenuesListPage";
-import AdminResultFormPage from "./pages/admin/results/AdminResultFormPage";
-import AdminResultsListPage from "./pages/admin/results/AdminResultsListPage";
-import AdminLeaderboardPage from "./pages/admin/leaderboard/AdminLeaderboardPage";
-import LandingPage from "./pages/LandingPage";
-import LoginPage from "./pages/auth/LoginPage";
-import RegisterPage from "./pages/auth/RegisterPage";
-import StudentEventDetailPage from "./pages/student/events/StudentEventDetailPage";
-import StudentEventsPage from "./pages/student/events/StudentEventsPage";
-import StudentMatchDetailPage from "./pages/student/matches/StudentMatchDetailPage";
-import StudentMatchResultPage from "./pages/student/matches/StudentMatchResultPage";
-import StudentMatchesPage from "./pages/student/matches/StudentMatchesPage";
-import StudentSectionPage from "./pages/student/StudentSectionPage";
-import StudentPlayerDetailPage from "./pages/student/players/StudentPlayerDetailPage";
-import StudentPlayersPage from "./pages/student/players/StudentPlayersPage";
-import StudentTeamDetailPage from "./pages/student/teams/StudentTeamDetailPage";
-import StudentTeamsPage from "./pages/student/teams/StudentTeamsPage";
-import StudentVenueDetailPage from "./pages/student/venues/StudentVenueDetailPage";
-import StudentVenuesPage from "./pages/student/venues/StudentVenuesPage";
-import StudentLeaderboardPage from "./pages/student/leaderboard/StudentLeaderboardPage";
-import StudentEditProfilePage from "./pages/student/profile/StudentEditProfilePage";
+import Navbar from "./components/Navbar";
+import Sidebar from "./components/Sidebar";
+import { useAuth } from "./context/AuthContext";
+import Dashboard from "./pages/Dashboard";
+import Societies from "./pages/Societies";
+import AddSociety from "./pages/AddSociety";
+import EditSociety from "./pages/EditSociety";
+import SocietyDetails from "./pages/SocietyDetails";
+import Members from "./pages/Members";
+import Teams from "./pages/Teams";
+import Schedules from "./pages/Schedules";
+import UserLanding from "./pages/UserLanding";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import UserAuth from "./pages/UserAuth";
+import StudentLayout from "./pages/StudentLayout";
+import StudentTeams from "./pages/StudentTeams";
+import StudentEvents from "./pages/StudentEvents";
+import StudentMatches from "./pages/StudentMatches";
+import StudentPlayers from "./pages/StudentPlayers";
+import StudentLeaderboard from "./pages/StudentLeaderboard";
+import StudentProfile from "./pages/StudentProfile";
+import TeamDetails from "./pages/TeamDetails";
 
-const ADMIN_PLACEHOLDER_SEGMENTS = ADMIN_NAV_ITEMS.filter(
-  ({ segment }) =>
-    segment !== "events" &&
-    segment !== "matches" &&
-    segment !== "teams" &&
-    segment !== "team-requests" &&
-    segment !== "players" &&
-    segment !== "player-requests" &&
-    segment !== "venues" &&
-    segment !== "results" &&
-    segment !== "leaderboard-reports"
-);
+const Layout = () => {
+  return (
+    <div className="min-h-screen bg-layer px-4 py-4 md:px-8 md:py-6">
+      <div className="mx-auto max-w-7xl">
+        <Navbar />
+        <div className="grid gap-4 md:grid-cols-[250px,1fr] md:gap-6">
+          <Sidebar />
+          <main className="glass-panel p-4 md:p-6">
+            <Outlet />
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+};
 
-function App() {
+const RequireAdmin = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div className="grid min-h-screen place-items-center text-slate-600">Loading...</div>;
+  }
+
+  if (!user) {
+    return <Navigate to="/admin/login" replace />;
+  }
+
+  if (user.role !== "Admin") {
+    return <Navigate to="/student/teams" replace />;
+  }
+
+  return <Outlet />;
+};
+
+const RequireStudent = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div className="grid min-h-screen place-items-center text-slate-600">Loading...</div>;
+  }
+
+  if (!user) {
+    return <Navigate to="/user/login" replace />;
+  }
+
+  if (user.role !== "Student") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <Outlet />;
+};
+
+const UserHomeRedirect = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div className="grid min-h-screen place-items-center text-slate-600">Loading...</div>;
+  }
+
+  if (!user) {
+    return <Navigate to="/user/login" replace />;
+  }
+
+  if (user.role === "Admin") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <Navigate to="/student/teams" replace />;
+};
+
+const App = () => {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route
-        path="/admin"
-        element={
-          <RequireAuth>
-            <RequireRole roles="admin">
-              <AdminDashboardLayout />
-            </RequireRole>
-          </RequireAuth>
-        }
-      >
-        <Route index element={<Navigate to="overview" replace />} />
-        <Route path="events" element={<Outlet />}>
-          <Route index element={<AdminEventsListPage />} />
-          <Route path="new" element={<AdminEventFormPage />} />
-          <Route path=":eventId/edit" element={<AdminEventFormPage />} />
+      <Route path="/" element={<UserLanding />} />
+      <Route path="/admin/login" element={<Login />} />
+      <Route path="/admin/register" element={<Register />} />
+      <Route path="/user/login" element={<UserAuth />} />
+      <Route path="/user/register" element={<UserAuth />} />
+      <Route path="/user" element={<UserHomeRedirect />} />
+
+      <Route element={<RequireStudent />}>
+        <Route path="/student" element={<StudentLayout />}>
+          <Route path="teams" element={<StudentTeams />} />
+          <Route path="teams/:id" element={<TeamDetails />} />
+          <Route path="events" element={<StudentEvents />} />
+          <Route path="matches" element={<StudentMatches />} />
+          <Route path="players" element={<StudentPlayers />} />
+          <Route path="leaderboard" element={<StudentLeaderboard />} />
+          <Route path="profile" element={<StudentProfile />} />
         </Route>
-        <Route path="matches" element={<Outlet />}>
-          <Route index element={<AdminMatchesListPage />} />
-          <Route path="new" element={<AdminMatchFormPage />} />
-          <Route path=":matchId/edit" element={<AdminMatchFormPage />} />
-        </Route>
-        <Route path="teams" element={<Outlet />}>
-          <Route index element={<AdminTeamsListPage />} />
-          <Route path="new" element={<AdminTeamCreatePage />} />
-          <Route path=":teamId" element={<AdminTeamDetailPage />} />
-        </Route>
-        <Route path="team-requests" element={<AdminTeamRequestsPage />} />
-        <Route path="players" element={<Outlet />}>
-          <Route index element={<AdminPlayersListPage />} />
-          <Route path="new" element={<AdminPlayerFormPage />} />
-          <Route path=":playerId/edit" element={<AdminPlayerFormPage />} />
-        </Route>
-        <Route path="player-requests" element={<AdminPlayerRequestsPage />} />
-        <Route path="venues" element={<Outlet />}>
-          <Route index element={<AdminVenuesListPage />} />
-          <Route path="new" element={<AdminVenueFormPage />} />
-          <Route path=":venueId/edit" element={<AdminVenueFormPage />} />
-        </Route>
-        <Route path="results" element={<Outlet />}>
-          <Route index element={<AdminResultsListPage />} />
-          <Route path="new" element={<AdminResultFormPage />} />
-          <Route path=":resultId/edit" element={<AdminResultFormPage />} />
-        </Route>
-        <Route path="leaderboard-reports" element={<AdminLeaderboardPage />} />
-        {ADMIN_PLACEHOLDER_SEGMENTS.map(({ segment }) => (
-          <Route key={segment} path={segment} element={<AdminSectionPage />} />
-        ))}
       </Route>
-      <Route
-        path="/student"
-        element={
-          <RequireAuth>
-            <RequireRole roles="student">
-              <StudentDashboardLayout />
-            </RequireRole>
-          </RequireAuth>
-        }
-      >
-        <Route index element={<Navigate to="events" replace />} />
-        <Route path="events" element={<Outlet />}>
-          <Route index element={<StudentEventsPage />} />
-          <Route path=":eventId" element={<StudentEventDetailPage />} />
+
+      <Route element={<RequireAdmin />}>
+        <Route element={<Layout />}>
+          <Route path="/admin/dashboard" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/societies" element={<Societies />} />
+          <Route path="/societies/new" element={<AddSociety />} />
+          <Route path="/societies/:id/edit" element={<EditSociety />} />
+          <Route path="/societies/:id" element={<SocietyDetails />} />
+          <Route path="/members" element={<Members />} />
+          <Route path="/teams" element={<Teams />} />
+          <Route path="/teams/:id" element={<TeamDetails />} />
+          <Route path="/schedules" element={<Schedules />} />
         </Route>
-        <Route path="matches" element={<Outlet />}>
-          <Route index element={<StudentMatchesPage />} />
-          <Route path=":matchId/result" element={<StudentMatchResultPage />} />
-          <Route path=":matchId" element={<StudentMatchDetailPage />} />
-        </Route>
-        <Route path="teams" element={<Outlet />}>
-          <Route index element={<StudentTeamsPage />} />
-          <Route path=":teamId" element={<StudentTeamDetailPage />} />
-        </Route>
-        <Route path="players" element={<Outlet />}>
-          <Route index element={<StudentPlayersPage />} />
-          <Route path=":playerId" element={<StudentPlayerDetailPage />} />
-        </Route>
-        <Route path="venues" element={<Outlet />}>
-          <Route index element={<StudentVenuesPage />} />
-          <Route path=":venueId" element={<StudentVenueDetailPage />} />
-        </Route>
-        <Route path="leaderboard" element={<StudentLeaderboardPage />} />
-        <Route path="profile/edit" element={<StudentEditProfilePage />} />
-        <Route path=":section" element={<StudentSectionPage />} />
       </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
-}
+};
 
 export default App;

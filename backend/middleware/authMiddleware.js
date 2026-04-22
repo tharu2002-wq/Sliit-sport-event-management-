@@ -1,43 +1,46 @@
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
 const protect = async (req, res, next) => {
-  let token;
-
   try {
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
-      token = req.headers.authorization.split(" ")[1];
+    const authHeader = req.headers.authorization || "";
+    const [scheme, token] = authHeader.split(" ");
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-      req.user = await User.findById(decoded.id).select("-password");
-
-      if (!req.user) {
-        return res.status(401).json({ message: "User not found" });
-      }
-
-      next();
-    } else {
-      return res.status(401).json({ message: "Not authorized, no token" });
+    if (scheme !== "Bearer" || !token) {
+      res.status(401);
+      throw new Error("Not authorized, token missing");
     }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "dev-secret-key");
+    const user = await User.findById(decoded.userId).select("-passwordHash");
+
+    if (!user) {
+      res.status(401);
+      throw new Error("Not authorized, user not found");
+    }
+
+    req.user = user;
+    next();
   } catch (error) {
-    return res.status(401).json({ message: "Not authorized, token failed" });
+    if (res.statusCode === 200) {
+      res.status(401);
+    }
+    next(error);
   }
 };
 
-const authorizeRoles = (...roles) => {
-  return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        message: `Access denied. Role '${req.user.role}' is not allowed`,
-      });
-    }
+const authorizeRoles = (...roles) => (req, res, next) => {
+  if (!req.user) {
+    res.status(401);
+    return next(new Error("Not authorized"));
+  }
 
-    next();
-  };
+  if (!roles.includes(req.user.role)) {
+    res.status(403);
+    return next(new Error("Forbidden: insufficient permissions"));
+  }
+
+  next();
 };
 
-module.exports = { protect, authorizeRoles };
+export { protect, authorizeRoles };

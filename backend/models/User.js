@@ -1,56 +1,32 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "Name is required"],
+      required: true,
       trim: true,
     },
     email: {
       type: String,
-      required: [true, "Email is required"],
+      required: true,
       unique: true,
-      trim: true,
       lowercase: true,
+      trim: true,
     },
-    password: {
+    passwordHash: {
       type: String,
-      required: [true, "Password is required"],
-      minlength: 6,
+      required: true,
     },
     role: {
       type: String,
-      enum: ["admin", "organizer", "student"],
-      default: "student",
-    },
-    /** Optional student profile fields (editable via PATCH /api/users/profile). */
-    academicYear: {
-      type: String,
-      trim: true,
-    },
-    faculty: {
-      type: String,
-      trim: true,
-    },
-    studentId: {
-      type: String,
-      trim: true,
-    },
-    /** Optional; aligned with player age rules (17–120). */
-    age: {
-      type: Number,
-      min: 17,
-      max: 120,
-    },
-    skills: {
-      type: [String],
-      default: [],
+      enum: ["Student", "Admin", "Coordinator"],
+      default: "Student",
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-module.exports = mongoose.model("User", userSchema);
+const User = mongoose.model("User", userSchema);
+
+export default User;

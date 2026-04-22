@@ -1,33 +1,83 @@
-const express = require("express");
-const cors = require("cors");
-const dotenv = require("dotenv");
-const connectDB = require("./config/db");
+import "dotenv/config.js";
+import express from "express";
+import cors from "cors";
+import morgan from "morgan";
+import connectDB from "./config/db.js";
+import societyRoutes from "./routes/societyRoutes.js";
+import memberRoutes from "./routes/memberRoutes.js";
+import teamRoutes from "./routes/teamRoutes.js";
+import scheduleRoutes from "./routes/scheduleRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
+import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
 
-dotenv.config();
-connectDB();
+const PORT = process.env.PORT || 5000;
+const ALLOWED_ORIGINS = (
+  process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://localhost:5173,http://localhost:5174"
+)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    const isExplicitlyAllowed = ALLOWED_ORIGINS.includes(origin);
+    const isLocalhostOrigin = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
+
+    if (isExplicitlyAllowed || isLocalhostOrigin) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error("CORS: origin not allowed"));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 app.use(express.json());
+app.use(morgan("dev"));
 
 app.get("/", (req, res) => {
-  res.send("Sport Event Management System API is running...");
+  res.json({ message: "Society Management API is running" });
 });
 
-app.use("/api/auth", require("./routes/authRoutes"));
-app.use("/api/users", require("./routes/userRoutes"));
-app.use("/api/players", require("./routes/playerRoutes"));
-app.use("/api/player-requests", require("./routes/playerRequestRoutes"));
-app.use("/api/team-requests", require("./routes/teamRequestRoutes"));
-app.use("/api/teams", require("./routes/teamRoutes"));
-app.use("/api/venues", require("./routes/venueRoutes"));
-app.use("/api/events", require("./routes/eventRoutes"));
-app.use("/api/matches", require("./routes/matchRoutes"));
-app.use("/api/results", require("./routes/resultRoutes"));
+app.use("/api/societies", societyRoutes);
+app.use("/api/members", memberRoutes);
+app.use("/api/teams", teamRoutes);
+app.use("/api/schedules", scheduleRoutes);
+app.use("/api/auth", authRoutes);
 
-const PORT = process.env.PORT || 5000;
+app.use(notFound);
+app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+const startServer = (port) => {
+  const server = app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
+  });
+
+  server.on("error", (error) => {
+    if (error.code === "EADDRINUSE") {
+      const nextPort = Number(port) + 1;
+      console.warn(`Port ${port} is in use, retrying on ${nextPort}`);
+      startServer(nextPort);
+      return;
+    }
+
+    console.error(`Server startup failed: ${error.message}`);
+    process.exit(1);
+  });
+};
+
+const bootstrap = async () => {
+  await connectDB();
+  startServer(PORT);
+};
+
+bootstrap();
