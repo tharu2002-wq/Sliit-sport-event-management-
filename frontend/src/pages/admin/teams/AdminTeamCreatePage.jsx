@@ -60,11 +60,7 @@ export default function AdminTeamCreatePage() {
 
   const memberIdsSet = useMemo(() => new Set(memberIds.map(String)), [memberIds]);
 
-  useEffect(() => {
-    if (captainId && !memberIds.map(String).includes(String(captainId))) {
-      setCaptainId("");
-    }
-  }, [memberIds, captainId]);
+  add
 
   const getAssignedTeamLabel = (player) => {
     if (!Array.isArray(player?.teams) || player.teams.length === 0) return "";
@@ -240,7 +236,13 @@ export default function AdminTeamCreatePage() {
           <PlayerPicker
             players={players}
             selectedIds={memberIds}
-            onChange={setMemberIds}
+            onChange={(ids) => {
+              const strIds = ids.map(String);
+              if (captainId && !strIds.includes(String(captainId))) {
+                setCaptainId("");
+              }
+              setMemberIds(ids);
+            }}
             disabled={saving}
             showSearch
             searchPlaceholder="Search players by name or email..."

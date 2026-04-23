@@ -66,11 +66,7 @@ export default function StudentTeamRequestPage() {
     return `Already in ${teamName}`;
   };
 
-  useEffect(() => {
-    if (formData.captainId && !formData.memberIds.map(String).includes(String(formData.captainId))) {
-      setFormData((prev) => ({ ...prev, captainId: "" }));
-    }
-  }, [formData.memberIds, formData.captainId]);
+
 
   const validate = () => {
     const next = {};
@@ -239,7 +235,11 @@ export default function StudentTeamRequestPage() {
           <PlayerPicker
             players={allPlayers}
             selectedIds={formData.memberIds}
-            onChange={(ids) => setFormData({ ...formData, memberIds: ids })}
+            onChange={(ids) => {
+              const strIds = ids.map(String);
+              const newCaptainId = strIds.includes(String(formData.captainId)) ? formData.captainId : "";
+              setFormData({ ...formData, memberIds: ids, captainId: newCaptainId });
+            }}
             disabled={submitting}
             showSearch
             searchPlaceholder="Search players by name or email..."

@@ -153,7 +153,11 @@ const getMyTeamRequest = async (req, res) => {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    const request = await TeamRequest.findOne({ user: req.user._id }).sort({ createdAt: -1 }).lean();
+    const request = await TeamRequest.findOne({ user: req.user._id })
+      .populate("captain", "fullName studentId email")
+      .populate("members", "fullName studentId email")
+      .sort({ createdAt: -1 })
+      .lean();
     return res.status(200).json({ request: request ?? null });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -171,7 +175,11 @@ const getMyTeamRequests = async (req, res) => {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    const requests = await TeamRequest.find({ user: req.user._id }).sort({ createdAt: -1 }).lean();
+    const requests = await TeamRequest.find({ user: req.user._id })
+      .populate("captain", "fullName studentId email")
+      .populate("members", "fullName studentId email")
+      .sort({ createdAt: -1 })
+      .lean();
     return res.status(200).json({ requests });
   } catch (error) {
     return res.status(500).json({ message: error.message });

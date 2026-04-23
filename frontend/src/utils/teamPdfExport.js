@@ -145,15 +145,10 @@ export function downloadTeamsPdf(teams) {
       fillColor: [248, 250, 252],
     },
     columnStyles: {
-      0: { cellWidth: 10, halign: "center" },
-      1: { cellWidth: 32, fontStyle: "bold" },
-      2: { cellWidth: 22 },
-      3: { cellWidth: 22 },
-      4: { cellWidth: 32 },
-      5: { cellWidth: 18, halign: "center" },
-      6: { cellWidth: 42 },
-      7: { cellWidth: 30 },
-      8: { cellWidth: 20, halign: "center" },
+      0: { halign: "center" },
+      1: { fontStyle: "bold" },
+      5: { halign: "center" },
+      8: { halign: "center" },
     },
     didParseCell: function (data) {
       // Color the Status column
@@ -358,11 +353,9 @@ export function downloadSingleTeamPdf(team) {
         fillColor: [248, 250, 252],
       },
       columnStyles: {
-        0: { cellWidth: 12, halign: "center" },
-        1: { cellWidth: 45, fontStyle: "bold" },
-        2: { cellWidth: 35 },
-        3: { cellWidth: 55 },
-        4: { cellWidth: 25, halign: "center" },
+        0: { halign: "center" },
+        1: { fontStyle: "bold" },
+        4: { halign: "center" },
       },
       didParseCell: function (data) {
         if (data.section === "body" && data.column.index === 4) {
