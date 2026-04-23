@@ -39,6 +39,14 @@ async function validateTeamRequestPayload(payload, options = {}) {
     return { message: "Team name, sport type, and society are required" };
   }
 
+  if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+    return { message: "Please provide a valid email address" };
+  }
+
+  if (contactPhone && !/^\d{10}$/.test(contactPhone.replace(/[-\s]/g, ''))) {
+    return { message: "Contact number must be exactly 10 digits" };
+  }
+
   const normalizedMembers = normalizeIdList(members);
   const captainId = String(captain || "").trim();
   if (!captainId) {

@@ -82,9 +82,9 @@ export default function StudentTeamRequestPage() {
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       next.contactEmail = "Please enter a valid email address.";
     }
-    const phone = formData.contactPhone.trim();
-    if (phone && !/^[+]?[-()\d\s]{7,20}$/.test(phone)) {
-      next.contactPhone = "Please enter a valid contact number.";
+    const phone = formData.contactPhone.trim().replace(/[-\s]/g, "");
+    if (phone && !/^\d{10}$/.test(phone)) {
+      next.contactPhone = "Contact number must be exactly 10 digits.";
     }
     if (formData.memberIds.length === 0) next.members = "Select at least one player";
     const blockedSelected = allPlayers.some(
