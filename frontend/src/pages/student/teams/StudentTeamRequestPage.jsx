@@ -88,7 +88,7 @@ export default function StudentTeamRequestPage() {
     }
     if (formData.memberIds.length === 0) next.members = "Select at least one player";
     const blockedSelected = allPlayers.some(
-      (p) => memberIdsSet.has(String(p._id)) && Array.isArray(p.teams) && p.teams.length > 0
+      (p) => memberIdsSet.has(String(p._id)) && Array.isArray(p.teams) && p.teams.some((t) => t?.isActive !== false)
     );
     if (blockedSelected) next.members = "Players already assigned to another team cannot be selected.";
     if (!formData.captainId) next.captain = "Captain is required";
@@ -233,7 +233,7 @@ export default function StudentTeamRequestPage() {
             disabled={submitting}
             showSearch
             searchPlaceholder="Search players by name or email..."
-            getOptionHint={getAssignedTeamLabel}
+            isOptionDisabled={getAssignedTeamLabel}
           />
         </div>
 

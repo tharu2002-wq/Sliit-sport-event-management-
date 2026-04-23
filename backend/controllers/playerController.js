@@ -10,13 +10,13 @@ const PlayerRequest = require("../models/PlayerRequest");
 async function findTeamsByMembership(playerIds) {
   if (!playerIds.length) return [];
   return Team.find({ members: { $in: playerIds } })
-    .select("teamName sportType members")
+    .select("teamName sportType members isActive")
     .lean();
 }
 
 /**
  * @param {{ _id: import("mongoose").Types.ObjectId }[]} players
- * @returns {Promise<Map<string, Array<{ _id: unknown, teamName: string, sportType: string }>>>}
+ * @returns {Promise<Map<string, Array<{ _id: unknown, teamName: string, sportType: string, isActive: boolean }>>>}
  */
 async function buildTeamsByPlayerId(players) {
   const map = new Map();
@@ -33,6 +33,7 @@ async function buildTeamsByPlayerId(players) {
           _id: t._id,
           teamName: t.teamName,
           sportType: t.sportType,
+          isActive: t.isActive,
         });
       }
     }

@@ -145,6 +145,10 @@ const deleteTeam = async (req, res) => {
     }
 
     await Team.findByIdAndDelete(req.params.id);
+    await Player.updateMany(
+      { team: req.params.id },
+      { $set: { team: null } }
+    );
     return res.status(200).json({ message: "Team deleted successfully" });
   } catch (error) {
     return res.status(500).json({ message: error.message });

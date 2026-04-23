@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { cn } from "../../../utils/cn";
 
 function playerLabel(p) {
-  const name = p.fullName ?? "Player";
+  const name = p.fullName || "Unnamed Player";
   const sid = p.studentId ? ` · ${p.studentId}` : "";
   return `${name}${sid}`;
 }
