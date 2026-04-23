@@ -35,15 +35,15 @@ async function validateTeamRequestPayload(payload, options = {}) {
   const { enforceTeamConflicts = true } = options;
   const { teamName, sportType, society, contactEmail, contactPhone, captain, members } = payload;
 
-  if (!teamName || !sportType || !society) {
-    return { message: "Team name, sport type, and society are required" };
+  if (!teamName || !sportType || !society || !contactEmail || !contactPhone) {
+    return { message: "All fields are required" };
   }
 
-  if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
     return { message: "Please provide a valid email address" };
   }
 
-  if (contactPhone && !/^\d{10}$/.test(contactPhone.replace(/[-\s]/g, ''))) {
+  if (!/^\d{10}$/.test(contactPhone.replace(/[-\s]/g, ''))) {
     return { message: "Contact number must be exactly 10 digits" };
   }
 

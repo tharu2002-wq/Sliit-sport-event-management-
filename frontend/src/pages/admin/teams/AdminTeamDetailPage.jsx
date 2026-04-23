@@ -251,7 +251,10 @@ export default function AdminTeamDetailPage() {
             name="contactPhone"
             label="Team Contact Phone"
             value={contactPhone}
-            onChange={(e) => setContactPhone(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+              setContactPhone(val);
+            }}
             error={fieldErrors.contactPhone}
             placeholder="0771234567"
           />

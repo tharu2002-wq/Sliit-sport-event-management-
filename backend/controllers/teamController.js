@@ -8,15 +8,15 @@ const createTeam = async (req, res) => {
   try {
     const { teamName, sportType, society, contactEmail, contactPhone, captain, members } = req.body;
 
-    if (!teamName || !sportType) {
-      return res.status(400).json({ message: "teamName and sportType are required" });
+    if (!teamName || !sportType || !society || !contactEmail || !contactPhone) {
+      return res.status(400).json({ message: "All fields are required" });
     }
 
-    if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
       return res.status(400).json({ message: "Please provide a valid email address" });
     }
 
-    if (contactPhone && !/^\d{10}$/.test(contactPhone.replace(/[-\s]/g, ''))) {
+    if (!/^\d{10}$/.test(contactPhone.replace(/[-\s]/g, ''))) {
       return res.status(400).json({ message: "Contact number must be exactly 10 digits" });
     }
 

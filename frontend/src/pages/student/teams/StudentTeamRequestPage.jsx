@@ -79,11 +79,16 @@ export default function StudentTeamRequestPage() {
     if (sportErr) next.sportType = sportErr;
     if (!formData.society.trim()) next.society = "Society is required";
     const email = formData.contactEmail.trim();
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!email) {
+      next.contactEmail = "Email is required.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       next.contactEmail = "Please enter a valid email address.";
     }
+
     const phone = formData.contactPhone.trim().replace(/[-\s]/g, "");
-    if (phone && !/^\d{10}$/.test(phone)) {
+    if (!phone) {
+      next.contactPhone = "Phone number is required.";
+    } else if (!/^\d{10}$/.test(phone)) {
       next.contactPhone = "Contact number must be exactly 10 digits.";
     }
     if (formData.memberIds.length === 0) next.members = "Select at least one player";
@@ -204,16 +209,21 @@ export default function StudentTeamRequestPage() {
             error={errors.contactEmail}
             placeholder="team@example.com"
             disabled={submitting}
+            required
           />
           <TextField
             id="team-contact-phone"
             name="contactPhone"
             label="Team Contact Phone"
             value={formData.contactPhone}
-            onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+            onChange={(e) => {
+              const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+              setFormData({ ...formData, contactPhone: val });
+            }}
             error={errors.contactPhone}
             placeholder="0771234567"
             disabled={submitting}
+            required
           />
         </div>
 
