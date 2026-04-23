@@ -22,6 +22,22 @@ import AdminVenueFormPage from "./pages/admin/venues/AdminVenueFormPage";
 import AdminResultsListPage from "./pages/admin/results/AdminResultsListPage";
 import AdminResultFormPage from "./pages/admin/results/AdminResultFormPage";
 import AdminLeaderboardPage from "./pages/admin/leaderboard/AdminLeaderboardPage";
+import { RequireRole } from "./components/auth/RequireRole";
+
+import StudentEventsPage from "./pages/student/events/StudentEventsPage";
+import StudentEventDetailPage from "./pages/student/events/StudentEventDetailPage";
+import StudentMatchesPage from "./pages/student/matches/StudentMatchesPage";
+import StudentMatchDetailPage from "./pages/student/matches/StudentMatchDetailPage";
+import StudentTeamsPage from "./pages/student/teams/StudentTeamsPage";
+import StudentTeamDetailPage from "./pages/student/teams/StudentTeamDetailPage";
+import StudentTeamRequestPage from "./pages/student/teams/StudentTeamRequestPage";
+import StudentPlayersPage from "./pages/student/players/StudentPlayersPage";
+import StudentPlayerDetailPage from "./pages/student/players/StudentPlayerDetailPage";
+import StudentVenuesPage from "./pages/student/venues/StudentVenuesPage";
+import StudentVenueDetailPage from "./pages/student/venues/StudentVenueDetailPage";
+import StudentLeaderboardPage from "./pages/student/leaderboard/StudentLeaderboardPage";
+import StudentProfilePage from "./pages/student/profile/StudentProfilePage";
+import StudentEditProfilePage from "./pages/student/profile/StudentEditProfilePage";
 
 function App() {
   return (
@@ -29,7 +45,14 @@ function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/admin" element={<AdminDashboardLayout />}>
+      <Route
+        path="/admin"
+        element={
+          <RequireRole roles={["admin", "organizer"]}>
+            <AdminDashboardLayout />
+          </RequireRole>
+        }
+      >
         <Route index element={<Navigate to="overview" replace />} />
         <Route path="overview" element={<AdminSectionPage />} />
 
@@ -63,8 +86,45 @@ function App() {
         <Route path="users" element={<AdminSectionPage />} />
         <Route path="settings" element={<AdminSectionPage />} />
       </Route>
-      <Route path="/student" element={<StudentDashboardLayout />}>
+      <Route
+        path="/student"
+        element={
+          <RequireRole roles={["student"]}>
+            <StudentDashboardLayout />
+          </RequireRole>
+        }
+      >
         <Route index element={<Navigate to="events" replace />} />
+        
+        {/* Events */}
+        <Route path="events" element={<StudentEventsPage />} />
+        <Route path="events/:eventId" element={<StudentEventDetailPage />} />
+        
+        {/* Matches */}
+        <Route path="matches" element={<StudentMatchesPage />} />
+        <Route path="matches/:matchId" element={<StudentMatchDetailPage />} />
+        
+        {/* Teams */}
+        <Route path="teams" element={<StudentTeamsPage />} />
+        <Route path="teams/request" element={<StudentTeamRequestPage />} />
+        <Route path="teams/:teamId" element={<StudentTeamDetailPage />} />
+        
+        {/* Players */}
+        <Route path="players" element={<StudentPlayersPage />} />
+        <Route path="players/:playerId" element={<StudentPlayerDetailPage />} />
+        
+        {/* Venues */}
+        <Route path="venues" element={<StudentVenuesPage />} />
+        <Route path="venues/:venueId" element={<StudentVenueDetailPage />} />
+        
+        {/* Leaderboard */}
+        <Route path="leaderboard" element={<StudentLeaderboardPage />} />
+        
+        {/* Profile */}
+        <Route path="profile" element={<StudentProfilePage />} />
+        <Route path="profile/edit" element={<StudentEditProfilePage />} />
+
+        {/* Fallback for legacy section routing */}
         <Route path=":section" element={<StudentSectionPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

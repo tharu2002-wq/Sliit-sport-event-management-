@@ -18,6 +18,7 @@ import { TextField } from "../../../components/ui/TextField";
 import { getApiErrorMessage } from "../../../utils/apiError";
 import { refToId } from "../../../utils/eventFormUtils";
 import { getTitleOrSportTypeError } from "../../../utils/eventValidation";
+import { downloadSingleTeamPdf } from "../../../utils/teamPdfExport";
 
 function memberName(m) {
   if (typeof m === "object" && m !== null && m.fullName) return m.fullName;
@@ -36,6 +37,9 @@ export default function AdminTeamDetailPage() {
 
   const [teamName, setTeamName] = useState("");
   const [sportType, setSportType] = useState("");
+  const [society, setSociety] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [savingInfo, setSavingInfo] = useState(false);
 
@@ -53,6 +57,9 @@ export default function AdminTeamDetailPage() {
     setTeam(t);
     setTeamName(t.teamName ?? "");
     setSportType(t.sportType ?? "");
+    setSociety(t.society ?? "Sliit");
+    setContactEmail(t.contactEmail ?? "");
+    setContactPhone(t.contactPhone ?? "");
     setCaptainId(refToId(t.captain));
   }, []);
 
@@ -112,6 +119,9 @@ export default function AdminTeamDetailPage() {
       await updateTeam(teamId, {
         teamName: teamName.trim(),
         sportType: sportType.trim(),
+        society: society.trim(),
+        contactEmail: contactEmail.trim() || undefined,
+        contactPhone: contactPhone.trim() || undefined,
       });
       await refreshTeam();
       setFieldErrors({});
@@ -263,6 +273,16 @@ export default function AdminTeamDetailPage() {
           >
             {isInactive ? "Inactive" : "Active"}
           </span>
+          <button
+            type="button"
+            onClick={() => downloadSingleTeamPdf(team)}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download PDF
+          </button>
         </div>
         <p className="mt-1 text-sm text-gray-600">{team.sportType}</p>
       </div>
@@ -318,6 +338,38 @@ export default function AdminTeamDetailPage() {
             }}
             error={fieldErrors.sportType}
             required
+          />
+          <SelectField
+            id="edit-team-society"
+            name="society"
+            label="Society"
+            value={society}
+            onChange={(e) => setSociety(e.target.value)}
+            error={fieldErrors.society}
+            required
+          >
+            <option value="Sliit">Sliit</option>
+            <option value="IEEE">IEEE</option>
+            <option value="FOSS">FOSS</option>
+            <option value="Rotaract">Rotaract</option>
+            <option value="Leo">Leo</option>
+            <option value="Other">Other</option>
+          </SelectField>
+          <TextField
+            id="edit-team-contact-email"
+            name="contactEmail"
+            label="Contact Email"
+            value={contactEmail}
+            onChange={(e) => setContactEmail(e.target.value)}
+            error={fieldErrors.contactEmail}
+          />
+          <TextField
+            id="edit-team-contact-phone"
+            name="contactPhone"
+            label="Contact Phone"
+            value={contactPhone}
+            onChange={(e) => setContactPhone(e.target.value)}
+            error={fieldErrors.contactPhone}
           />
           <div className="sm:col-span-2">
             <Button type="submit" variant="primary" size="sm" disabled={savingInfo}>

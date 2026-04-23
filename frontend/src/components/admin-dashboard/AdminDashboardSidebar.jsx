@@ -31,7 +31,7 @@ export function AdminDashboardSidebar({ className, onNavigate }) {
               decoding="async"
             />
           </div>
-          <p className="mt-2 text-[10px] font-semibold uppercase tracking-widest text-slate-700">Administrator</p>
+          <p className="mt-2 text-[10px] font-semibold uppercase tracking-widest text-slate-700">{user?.role === 'admin' ? 'Administrator' : user?.role === 'organizer' ? 'Organizer' : 'Student'}</p>
           {user?.name ? (
             <p className="mt-1 max-w-full truncate text-center text-xs text-gray-500">
               Signed in as <span className="font-semibold text-gray-700">{user.name}</span>

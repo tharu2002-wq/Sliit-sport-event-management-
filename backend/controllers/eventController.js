@@ -46,11 +46,13 @@ const createEvent = async (req, res) => {
       });
     }
 
+    /*
     if (!isTodayOrFuture(startDate)) {
       return res.status(400).json({
         message: "Event start date cannot be in the past",
       });
     }
+    */
 
     const normalizedStartDate = normalizeDate(startDate);
     const normalizedEndDate = normalizeDate(endDate);

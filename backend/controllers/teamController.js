@@ -6,7 +6,7 @@ const Player = require("../models/Player");
 // @access  Private (Admin, Organizer)
 const createTeam = async (req, res) => {
   try {
-    const { teamName, sportType, captain, members } = req.body;
+    const { teamName, sportType, society, contactEmail, contactPhone, captain, members } = req.body;
 
     if (!teamName || !sportType) {
       return res.status(400).json({ message: "teamName and sportType are required" });
@@ -31,6 +31,9 @@ const createTeam = async (req, res) => {
     const team = await Team.create({
       teamName: String(teamName).trim(),
       sportType: String(sportType).trim(),
+      society: society ? String(society).trim() : "Sliit",
+      contactEmail: contactEmail ? String(contactEmail).trim().toLowerCase() : undefined,
+      contactPhone: contactPhone ? String(contactPhone).trim() : undefined,
       captain: captain || null,
       members: memberIds,
     });
@@ -85,7 +88,7 @@ const getTeamById = async (req, res) => {
 // @access  Private (Admin, Organizer)
 const updateTeam = async (req, res) => {
   try {
-    const { teamName, sportType, captain, members } = req.body;
+    const { teamName, sportType, society, contactEmail, contactPhone, captain, members, isActive } = req.body;
 
     const team = await Team.findById(req.params.id);
     if (!team) {
@@ -112,7 +115,11 @@ const updateTeam = async (req, res) => {
 
     if (teamName !== undefined) team.teamName = String(teamName).trim();
     if (sportType !== undefined) team.sportType = String(sportType).trim();
+    if (society !== undefined) team.society = String(society).trim();
+    if (contactEmail !== undefined) team.contactEmail = contactEmail ? String(contactEmail).trim().toLowerCase() : undefined;
+    if (contactPhone !== undefined) team.contactPhone = contactPhone ? String(contactPhone).trim() : undefined;
     if (captain !== undefined) team.captain = captain || null;
+    if (isActive !== undefined) team.isActive = Boolean(isActive);
 
     await team.save();
 

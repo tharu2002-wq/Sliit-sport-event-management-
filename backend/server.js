@@ -34,10 +34,21 @@ app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/players", require("./routes/playerRoutes"));
 app.use("/api/teams", require("./routes/teamRoutes"));
+app.use("/api/team-requests", require("./routes/teamRequestRoutes"));
 app.use("/api/events", require("./routes/eventRoutes"));
 app.use("/api/venues", require("./routes/venueRoutes"));
 app.use("/api/matches", require("./routes/matchRoutes"));
 app.use("/api/results", require("./routes/resultRoutes"));
+app.use("/api/player-requests", require("./routes/playerRequestRoutes"));
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(err.status || 500).json({
+    message: err.message || "An unexpected error occurred on the server.",
+    error: process.env.NODE_ENV === "development" ? err.stack : undefined,
+  });
+});
 
 const PORT = process.env.PORT || 5000;
 

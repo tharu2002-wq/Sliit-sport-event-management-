@@ -139,18 +139,44 @@ export default function StudentTeamDetailPage() {
               {active ? "Active" : "Inactive"}
             </span>
             <span className="text-sm font-bold text-blue-700">{team.sportType}</span>
+            {team.society && (
+              <span className="ml-2 rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 ring-1 ring-blue-100">
+                {team.society}
+              </span>
+            )}
           </div>
 
-          <div className="border-t border-gray-100 pt-6">
-            <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">Captain</h2>
-            {team.captain ? (
-              <p className="mt-2 text-base font-semibold text-gray-900">{team.captain.fullName}</p>
-            ) : (
-              <p className="mt-2 text-sm text-gray-500">No captain assigned.</p>
-            )}
-            {team.captain?.studentId ? (
-              <p className="text-sm text-gray-600">ID: {team.captain.studentId}</p>
-            ) : null}
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div className="border-t border-gray-100 pt-6">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">Captain</h2>
+              {team.captain ? (
+                <p className="mt-2 text-base font-semibold text-gray-900">{team.captain.fullName}</p>
+              ) : (
+                <p className="mt-2 text-sm text-gray-500">No captain assigned.</p>
+              )}
+              {team.captain?.studentId ? (
+                <p className="text-sm text-gray-600">ID: {team.captain.studentId}</p>
+              ) : null}
+            </div>
+
+            <div className="border-t border-gray-100 pt-6">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">Contact Info</h2>
+              <div className="mt-2 space-y-1">
+                {team.contactEmail ? (
+                  <p className="text-sm text-gray-900">
+                    <span className="font-medium text-gray-500">Email:</span> {team.contactEmail}
+                  </p>
+                ) : null}
+                {team.contactPhone ? (
+                  <p className="text-sm text-gray-900">
+                    <span className="font-medium text-gray-500">Phone:</span> {team.contactPhone}
+                  </p>
+                ) : null}
+                {!team.contactEmail && !team.contactPhone && (
+                  <p className="text-sm text-gray-500">No contact info available.</p>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="mt-8 border-t border-gray-100 pt-6">

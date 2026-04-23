@@ -63,11 +63,13 @@ const createMatch = async (req, res) => {
       });
     }
 
+    /* 
     if (!isTodayOrFuture(date)) {
       return res.status(400).json({
         message: "Match date cannot be in the past",
       });
     }
+    */
 
     const startMinutes = timeToMinutes(startTime);
     const endMinutes = timeToMinutes(endTime);
@@ -205,10 +207,7 @@ const createMatch = async (req, res) => {
 const getAllMatches = async (req, res) => {
   try {
     const matches = await Match.find()
-      .populate("event", "title sportType startDate endDate status description")
-      .populate("teamA", "teamName sportType")
-      .populate("teamB", "teamName sportType")
-      .populate("venue", "venueName location capacity")
+      .populate(MATCH_DETAIL_POPULATE)
       .sort({ date: 1, startTime: 1 });
 
     return res.status(200).json(matches);
@@ -246,10 +245,7 @@ const getMatchesByEvent = async (req, res) => {
     }
 
     const matches = await Match.find({ event: req.params.eventId })
-      .populate("event", "title sportType startDate endDate status description")
-      .populate("teamA", "teamName sportType")
-      .populate("teamB", "teamName sportType")
-      .populate("venue", "venueName location")
+      .populate(MATCH_DETAIL_POPULATE)
       .sort({ date: 1, startTime: 1 });
 
     return res.status(200).json(matches);

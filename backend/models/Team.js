@@ -23,6 +23,24 @@ const teamSchema = new mongoose.Schema(
         ref: "Player",
       },
     ],
+    society: {
+      type: String,
+      trim: true,
+      default: "Sliit",
+    },
+    contactEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
+    contactPhone: {
+      type: String,
+      trim: true,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );
