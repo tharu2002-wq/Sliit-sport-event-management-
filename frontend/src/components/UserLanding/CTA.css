@@ -1,0 +1,123 @@
+/* ===== CALL TO ACTION ===== */
+.cta {
+  padding: 88px 24px;
+  background: linear-gradient(135deg, #122f78 0%, #1f4ebd 70%, #12409b 100%);
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+
+.cta-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  pointer-events: none;
+}
+
+.cta-blob-1 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(59,130,246,0.25), transparent);
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.cta-blob-2 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(139,92,246,0.2), transparent);
+  bottom: 0;
+  right: 10%;
+}
+
+.cta-blob-3 {
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(16,185,129,0.15), transparent);
+  bottom: 0;
+  left: 10%;
+}
+
+.cta-inner {
+  position: relative;
+  z-index: 2;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.cta-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--blue-300);
+  background: rgba(59,130,246,0.12);
+  border: 1px solid rgba(59,130,246,0.25);
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  margin-bottom: 18px;
+}
+
+.cta-heading {
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 4.8vw, 3.2rem);
+  font-weight: 800;
+  color: var(--white);
+  line-height: 1.1;
+  margin-bottom: 14px;
+}
+
+.cta-heading span {
+  background: linear-gradient(135deg, #60a5fa, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.cta-desc {
+  color: rgba(255,255,255,0.72);
+  font-size: 0.84rem;
+  line-height: 1.65;
+  margin-bottom: 26px;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cta-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+
+.cta-actions .btn {
+  padding: 10px 18px;
+  font-size: 0.75rem;
+}
+
+.cta-trust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.cta-trust-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.5);
+}
+
+.cta-trust-icon {
+  font-size: 1rem;
+}

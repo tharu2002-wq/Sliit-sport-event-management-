@@ -1,0 +1,134 @@
+/* ===== MODULES SECTION ===== */
+.modules {
+  padding: 82px 24px;
+  background: #ffffff;
+}
+
+.modules-header {
+  text-align: center;
+  max-width: 600px;
+  margin: 0 auto 44px;
+}
+
+.modules-heading {
+  font-family: var(--font-heading);
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  font-weight: 800;
+  color: var(--gray-900);
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+
+.modules-heading-accent {
+  background: var(--gradient-blue);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.modules-subheading {
+  color: var(--gray-500);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.modules-grid {
+  max-width: 980px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.module-card {
+  background: var(--white);
+  border: 1px solid #e6ecf5;
+  border-radius: 12px;
+  padding: 24px 22px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  transition: all var(--transition-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.module-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(37,99,235,0.03), transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.module-card:hover {
+  border-color: rgba(37,99,235,0.2);
+  box-shadow: 0 12px 48px rgba(37,99,235,0.1);
+  transform: translateY(-4px);
+}
+
+.module-card:hover::after {
+  opacity: 1;
+}
+
+.module-icon-wrap {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.module-body {
+  flex: 1;
+}
+
+.module-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--blue-500);
+  margin-bottom: 6px;
+}
+
+.module-title {
+  font-family: var(--font-heading);
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: 8px;
+}
+
+.module-desc {
+  font-size: 0.76rem;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.module-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.module-tag {
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--blue-600);
+  background: rgba(37,99,235,0.07);
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(37,99,235,0.12);
+}
+
+@media (max-width: 768px) {
+  .modules-grid { grid-template-columns: 1fr; }
+  .module-card { flex-direction: column; }
+}
