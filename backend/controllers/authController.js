@@ -1,12 +1,27 @@
 const bcrypt = require("bcryptjs");
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const generateToken = require("../config/generateToken");
+
+const ensureDbConnected = (res) => {
+  if (mongoose.connection.readyState !== 1) {
+    res.status(503).json({
+      message:
+        "Authentication service is temporarily unavailable. Configure MONGO_URI and restart backend.",
+    });
+    return false;
+  }
+
+  return true;
+};
 
 // @desc    Register user
 // @route   POST /api/auth/register
 // @access  Public
 const registerUser = async (req, res) => {
   try {
+    if (!ensureDbConnected(res)) return;
+
     const { name, email, password, role } = req.body;
 
     if (!name || !email || !password) {
@@ -50,6 +65,8 @@ const registerUser = async (req, res) => {
 // @access  Public
 const loginUser = async (req, res) => {
   try {
+    if (!ensureDbConnected(res)) return;
+
     const { email, password } = req.body;
 
     if (!email || !password) {

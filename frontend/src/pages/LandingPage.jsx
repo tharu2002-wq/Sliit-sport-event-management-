@@ -1,74 +1,39 @@
-import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import "../styles/landing.css";
-import {
-  LandingAbout,
-  LandingCta,
-  LandingFeatures,
-  LandingFooter,
-  LandingHero,
-  LandingModules,
-  LandingNavbar,
-} from "../components/landing";
-
-function getInitialBanner(state) {
-  if (state?.registered) return "registered";
-  if (state?.loggedIn) return "loggedIn";
-  return null;
-}
+import { Link } from "react-router-dom";
 
 export default function LandingPage() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [banner, setBanner] = useState(() => getInitialBanner(location.state));
-
-  useEffect(() => {
-    if (location.state?.registered || location.state?.loggedIn) {
-      navigate(location.pathname, { replace: true, state: {} });
-    }
-  }, [location.pathname, location.state, navigate]);
-
-  const showBanner = banner !== null;
-
   return (
-    <div className="overflow-x-hidden bg-white font-sans text-gray-900">
-      {banner === "registered" ? (
-        <div
-          className="fixed inset-x-0 top-0 z-[60] border-b border-green-200 bg-green-50 px-4 py-3 text-center text-sm font-semibold text-green-900 shadow-sm"
-          role="status"
-        >
-          Registration successful.
-          <button
-            type="button"
-            className="ml-3 text-green-700 underline"
-            onClick={() => setBanner(null)}
-          >
-            Dismiss
-          </button>
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "grid",
+        placeItems: "center",
+        padding: "24px",
+        background: "linear-gradient(135deg, #f7f4ea 0%, #d8efe6 100%)",
+      }}
+    >
+      <section
+        style={{
+          width: "100%",
+          maxWidth: "720px",
+          background: "#ffffff",
+          borderRadius: "16px",
+          padding: "32px",
+          boxShadow: "0 10px 30px rgba(0, 0, 0, 0.08)",
+          textAlign: "center",
+        }}
+      >
+        <h1 style={{ marginTop: 0 }}>SLIIT Sport Event Management</h1>
+        <p style={{ lineHeight: 1.6 }}>
+          Frontend is running successfully. Some feature pages are not available in
+          this workspace snapshot, so placeholders are shown for those routes.
+        </p>
+        <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+          <Link to="/login">Login</Link>
+          <Link to="/register">Register</Link>
+          <Link to="/admin">Admin</Link>
+          <Link to="/student">Student</Link>
         </div>
-      ) : null}
-      {banner === "loggedIn" ? (
-        <div
-          className="fixed inset-x-0 top-0 z-[60] border-b border-green-200 bg-green-50 px-4 py-3 text-center text-sm font-semibold text-green-900 shadow-sm"
-          role="status"
-        >
-          Signed in successfully.
-          <button
-            type="button"
-            className="ml-3 text-green-700 underline"
-            onClick={() => setBanner(null)}
-          >
-            Dismiss
-          </button>
-        </div>
-      ) : null}
-      <LandingNavbar bannerOffset={showBanner} />
-      <LandingHero />
-      <LandingAbout />
-      <LandingFeatures />
-      <LandingModules />
-      <LandingCta />
-      <LandingFooter />
-    </div>
+      </section>
+    </main>
   );
 }
