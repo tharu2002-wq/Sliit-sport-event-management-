@@ -12,6 +12,14 @@ const createTeam = async (req, res) => {
       return res.status(400).json({ message: "teamName and sportType are required" });
     }
 
+    if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+      return res.status(400).json({ message: "Please provide a valid email address" });
+    }
+
+    if (contactPhone && !/^\d{10}$/.test(contactPhone.replace(/[-\s]/g, ''))) {
+      return res.status(400).json({ message: "Contact number must be exactly 10 digits" });
+    }
+
     const memberIds = Array.isArray(members) ? members : [];
 
     if (captain) {
@@ -21,10 +29,28 @@ const createTeam = async (req, res) => {
       }
     }
 
+    // Check if team name already exists
+    const existingTeam = await Team.findOne({ teamName: String(teamName).trim() });
+    if (existingTeam) {
+      return res.status(400).json({ message: "Team name already exists" });
+    }
+
     if (memberIds.length > 0) {
       const count = await Player.countDocuments({ _id: { $in: memberIds } });
       if (count !== memberIds.length) {
         return res.status(404).json({ message: "One or more members not found" });
+      }
+
+      // Check if any member is already in an active team
+      const activeTeamsWithMembers = await Team.find({
+        members: { $in: memberIds },
+        isActive: { $ne: false }
+      }).lean();
+
+      if (activeTeamsWithMembers.length > 0) {
+        return res.status(400).json({ 
+          message: "One or more selected players are already assigned to an active team" 
+        });
       }
     }
 
