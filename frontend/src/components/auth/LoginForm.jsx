@@ -52,7 +52,7 @@ export function LoginForm() {
     setLoading(true);
     try {
       const data = await login(payload);
-      const role = data?.role ?? "";
+      const role = String(data?.role ?? "").toLowerCase();
       if (role === "student") {
         navigate("/student/events", { replace: true });
       } else if (role === "admin") {

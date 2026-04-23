@@ -1,20 +1,42 @@
 import { createContext, useContext, useMemo, useState } from "react";
+import { loginRequest, registerRequest } from "../api/auth";
+import { clearAuthSession, getStoredUser, setAuthSession } from "../utils/authStorage";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => getStoredUser());
+
+  const login = async (credentials) => {
+    const data = await loginRequest(credentials);
+    setAuthSession(data);
+    const { _id, name, email, role, ...rest } = data;
+    const nextUser = { _id, name, email, role, ...rest };
+    setUser(nextUser);
+    return nextUser;
+  };
+
+  const register = async (payload) => {
+    const data = await registerRequest(payload);
+    setAuthSession(data);
+    const { _id, name, email, role, ...rest } = data;
+    const nextUser = { _id, name, email, role, ...rest };
+    setUser(nextUser);
+    return nextUser;
+  };
+
+  const logout = () => {
+    clearAuthSession();
+    setUser(null);
+  };
 
   const value = useMemo(
     () => ({
       user,
       isAuthenticated: Boolean(user),
-      login(nextUser) {
-        setUser(nextUser);
-      },
-      logout() {
-        setUser(null);
-      },
+      login,
+      register,
+      logout,
     }),
     [user]
   );
