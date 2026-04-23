@@ -64,7 +64,7 @@ export function AdminTeamsTable({ teams, deletingTeamId, onDeleteTeam, onToggleA
             </p>
             <div className="mt-4 flex gap-2">
               <Button to={`/admin/teams/${t._id}`} variant="outline" size="sm" className="!rounded-full !border-blue-200 !bg-blue-50 !px-4 !py-1.5 !text-blue-900">
-                View details
+                Edit
               </Button>
               <button
                 type="button"
@@ -127,7 +127,7 @@ export function AdminTeamsTable({ teams, deletingTeamId, onDeleteTeam, onToggleA
                       to={`/admin/teams/${t._id}`}
                       className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-900 hover:bg-blue-100"
                     >
-                      View details
+                      Edit
                     </Link>
                     <button
                       type="button"

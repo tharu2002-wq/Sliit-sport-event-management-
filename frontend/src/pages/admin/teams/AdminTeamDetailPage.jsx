@@ -1,290 +1,193 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import {
-  addTeamMembers,
-  assignTeamCaptain,
-  deactivateTeam,
-  getTeamById,
-  removeTeamMember,
-  updateTeam,
-} from "../../../api/teams";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { getTeamById, updateTeam } from "../../../api/teams";
 import { getPlayers } from "../../../api/players";
-import { ConfirmDialog } from "../../../components/admin/events/ConfirmDialog";
 import { PlayerPicker } from "../../../components/admin/teams/PlayerPicker";
 import { Button } from "../../../components/ui/Button";
 import { LoadingState } from "../../../components/ui/LoadingSpinner";
 import { SelectField } from "../../../components/ui/SelectField";
 import { TextField } from "../../../components/ui/TextField";
 import { getApiErrorMessage } from "../../../utils/apiError";
-import { refToId } from "../../../utils/eventFormUtils";
 import { getTitleOrSportTypeError } from "../../../utils/eventValidation";
+import { refToId } from "../../../utils/eventFormUtils";
 import { downloadSingleTeamPdf } from "../../../utils/teamPdfExport";
 
-function memberName(m) {
-  if (typeof m === "object" && m !== null && m.fullName) return m.fullName;
-  return "Player";
-}
+const SOCIETY_OPTIONS = [
+  "Sliit",
+  "IEEE",
+  "FOSS",
+  "Rotaract",
+  "Leo",
+  "Other",
+];
 
 export default function AdminTeamDetailPage() {
   const { teamId } = useParams();
+  const navigate = useNavigate();
 
   const [team, setTeam] = useState(null);
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [banner, setBanner] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const [teamName, setTeamName] = useState("");
   const [sportType, setSportType] = useState("");
-  const [society, setSociety] = useState("");
+  const [society, setSociety] = useState("Sliit");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
-  const [fieldErrors, setFieldErrors] = useState({});
-  const [savingInfo, setSavingInfo] = useState(false);
-
+  const [memberIds, setMemberIds] = useState([]);
   const [captainId, setCaptainId] = useState("");
-  const [savingCaptain, setSavingCaptain] = useState(false);
-
-  const [addMemberIds, setAddMemberIds] = useState([]);
-  const [addingMembers, setAddingMembers] = useState(false);
-
-  const [removeBusy, setRemoveBusy] = useState("");
-  const [deactivateOpen, setDeactivateOpen] = useState(false);
-  const [deactivateBusy, setDeactivateBusy] = useState(false);
-
-  const applyTeam = useCallback((t) => {
-    setTeam(t);
-    setTeamName(t.teamName ?? "");
-    setSportType(t.sportType ?? "");
-    setSociety(t.society ?? "Sliit");
-    setContactEmail(t.contactEmail ?? "");
-    setContactPhone(t.contactPhone ?? "");
-    setCaptainId(refToId(t.captain));
-  }, []);
-
-  const refreshTeam = useCallback(async () => {
-    if (!teamId) return;
-    const t = await getTeamById(teamId);
-    applyTeam(t);
-  }, [teamId, applyTeam]);
+  const [isActive, setIsActive] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!teamId) return;
-      setLoading(true);
-      setLoadError("");
       try {
-        const [p, t] = await Promise.all([getPlayers(), getTeamById(teamId)]);
-        if (cancelled) return;
-        setPlayers(Array.isArray(p) ? p : []);
-        applyTeam(t);
+        const [teamData, playersData] = await Promise.all([
+          getTeamById(teamId),
+          getPlayers()
+        ]);
+        if (!cancelled) {
+          setTeam(teamData);
+          setPlayers(Array.isArray(playersData) ? playersData : []);
+          
+          setTeamName(teamData.teamName || "");
+          setSportType(teamData.sportType || "");
+          setSociety(teamData.society || "Sliit");
+          setContactEmail(teamData.contactEmail || "");
+          setContactPhone(teamData.contactPhone || "");
+          setMemberIds(Array.isArray(teamData.members) ? teamData.members.map(m => String(m._id || m)) : []);
+          setCaptainId(teamData.captain ? String(teamData.captain._id || teamData.captain) : "");
+          setIsActive(teamData.isActive !== false);
+        }
       } catch (err) {
-        if (!cancelled) setLoadError(getApiErrorMessage(err, "Could not load team."));
+        if (!cancelled) setError(getApiErrorMessage(err, "Could not load data."));
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, [teamId, applyTeam]);
+    return () => { cancelled = true; };
+  }, [teamId]);
 
-  const memberList = useMemo(() => (Array.isArray(team?.members) ? team.members : []), [team]);
-  const memberIds = useMemo(() => memberList.map((m) => refToId(m)).filter(Boolean), [memberList]);
+  const captainOptions = useMemo(() => {
+    const set = new Set(memberIds.map(String));
+    return players.filter((p) => set.has(String(p._id)));
+  }, [players, memberIds]);
 
-  const playersNotInTeam = useMemo(
-    () => players.filter((p) => !memberIds.includes(String(p._id))),
-    [players, memberIds]
-  );
+  const memberIdsSet = useMemo(() => new Set(memberIds.map(String)), [memberIds]);
 
-  const capId = refToId(team?.captain);
+  useEffect(() => {
+    if (captainId && !memberIds.map(String).includes(String(captainId))) {
+      setCaptainId("");
+    }
+  }, [memberIds, captainId]);
 
-  const handleSaveInfo = async (e) => {
-    e.preventDefault();
-    if (!teamId) return;
+  const getAssignedTeamLabel = (player) => {
+    if (!Array.isArray(player?.teams) || player.teams.length === 0) return "";
+    const firstTeam = player.teams.find((t) => t?.isActive !== false && String(t?._id) !== teamId);
+    if (!firstTeam) return "";
+    const tName = typeof firstTeam?.teamName === "string" ? firstTeam.teamName.trim() : "";
+    if (!tName) return "Already in another team";
+    return `Already in ${tName}`;
+  };
+
+  const validate = () => {
     const next = {};
-    const nameErr = getTitleOrSportTypeError(teamName, "Team name");
+    if (!teamName.trim()) next.teamName = "Team name is required";
     const sportErr = getTitleOrSportTypeError(sportType, "Sport type");
-    if (nameErr) next.teamName = nameErr;
     if (sportErr) next.sportType = sportErr;
+    if (!society.trim()) next.society = "Society is required";
+    const email = contactEmail.trim();
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      next.contactEmail = "Please enter a valid email address.";
+    }
+    const phone = contactPhone.trim();
+    if (phone && !/^[+]?[-()\d\s]{7,20}$/.test(phone)) {
+      next.contactPhone = "Please enter a valid contact number.";
+    }
+    if (memberIds.length === 0) next.members = "Select at least one player";
+    
+    const blockedSelected = players.some(
+      (p) =>
+        memberIdsSet.has(String(p._id)) &&
+        Array.isArray(p.teams) &&
+        p.teams.some((t) => t?.isActive !== false && String(t?._id) !== teamId)
+    );
+    if (blockedSelected) next.members = "Players already assigned to another team cannot be selected.";
+    
+    if (!captainId) next.captain = "Captain is required";
+    if (captainId && !memberIds.map(String).includes(String(captainId))) {
+      next.captain = "Captain must be one of the selected players";
+    }
     setFieldErrors(next);
-    if (Object.keys(next).length > 0) return;
+    return Object.keys(next).length === 0;
+  };
 
-    setSavingInfo(true);
-    setBanner("");
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setSaving(true);
     setError("");
     try {
+      const members = [...new Set([...memberIds.map(String), String(captainId)])];
       await updateTeam(teamId, {
         teamName: teamName.trim(),
         sportType: sportType.trim(),
         society: society.trim(),
         contactEmail: contactEmail.trim() || undefined,
         contactPhone: contactPhone.trim() || undefined,
+        captain: captainId,
+        members,
+        isActive
       });
-      await refreshTeam();
-      setFieldErrors({});
-      setBanner("Team details saved.");
+      navigate("/admin/teams", { replace: true });
     } catch (err) {
       setError(getApiErrorMessage(err, "Could not update team."));
     } finally {
-      setSavingInfo(false);
+      setSaving(false);
     }
   };
 
-  const handleCaptainChange = async (e) => {
-    const next = e.target.value;
-    if (!teamId || !next) return;
-    setSavingCaptain(true);
-    setBanner("");
-    setError("");
-    try {
-      await assignTeamCaptain(teamId, next);
-      setCaptainId(next);
-      await refreshTeam();
-      setBanner("Captain updated.");
-    } catch (err) {
-      setError(getApiErrorMessage(err, "Could not assign captain."));
-    } finally {
-      setSavingCaptain(false);
-    }
-  };
-
-  const handleAddMembers = async () => {
-    if (!teamId || addMemberIds.length === 0) return;
-    setAddingMembers(true);
-    setBanner("");
-    setError("");
-    try {
-      await addTeamMembers(teamId, addMemberIds);
-      setAddMemberIds([]);
-      await refreshTeam();
-      setBanner("Players added to the team.");
-    } catch (err) {
-      setError(getApiErrorMessage(err, "Could not add players."));
-    } finally {
-      setAddingMembers(false);
-    }
-  };
-
-  const handleRemoveMember = async (memberId) => {
-    if (!teamId) return;
-    const idStr = String(memberId);
-    const isCaptain = capId && capId === idStr;
-    const count = memberList.length;
-
-    if (isCaptain && count > 1) {
-      setError("Assign another player as captain before removing the current captain.");
-      return;
-    }
-    if (isCaptain && count === 1) {
-      setError("Cannot remove the only member. Add another player first, or deactivate the team.");
-      return;
-    }
-
-    setRemoveBusy(idStr);
-    setError("");
-    setBanner("");
-    try {
-      await removeTeamMember(teamId, memberId);
-      await refreshTeam();
-      setBanner("Player removed from the team.");
-    } catch (err) {
-      setError(getApiErrorMessage(err, "Could not remove player."));
-    } finally {
-      setRemoveBusy("");
-    }
-  };
-
-  const handleDeactivate = async () => {
-    if (!teamId) return;
-    setDeactivateBusy(true);
-    setError("");
-    try {
-      await deactivateTeam(teamId);
-      setDeactivateOpen(false);
-      await refreshTeam();
-      setBanner("Team deactivated.");
-    } catch (err) {
-      setError(getApiErrorMessage(err, "Could not deactivate team."));
-    } finally {
-      setDeactivateBusy(false);
-    }
-  };
-
-  const handleReactivate = async () => {
-    if (!teamId) return;
-    setError("");
-    setBanner("");
-    try {
-      await updateTeam(teamId, { isActive: true });
-      await refreshTeam();
-      setBanner("Team reactivated.");
-    } catch (err) {
-      setError(getApiErrorMessage(err, "Could not reactivate team."));
-    }
-  };
-
-  if (loading) {
-    return <LoadingState label="Loading team…" />;
-  }
-
-  if (loadError) {
+  if (loading) return <LoadingState label="Loading team details…" />;
+  
+  if (!team && !loading) {
     return (
       <div>
         <Link to="/admin/teams" className="text-sm font-semibold text-blue-600 hover:underline">
           ← Back to teams
         </Link>
         <p className="mt-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-          {loadError}
+          {error || "Team not found."}
         </p>
       </div>
     );
   }
 
-  if (!team) {
-    return (
-      <div>
-        <Link to="/admin/teams" className="text-sm font-semibold text-blue-600 hover:underline">
-          ← Back to teams
-        </Link>
-        <p className="mt-6 text-sm text-gray-600">Team not found.</p>
-      </div>
-    );
-  }
-
-  const isInactive = team.isActive === false;
-
   return (
     <div>
-      <div className="border-b border-gray-100 pb-6">
-        <Link to="/admin/teams" className="text-sm font-semibold text-blue-600 hover:underline">
-          ← Back to teams
-        </Link>
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-black tracking-tight text-gray-900 md:text-3xl">{team.teamName}</h1>
-          <span
-            className={
-              isInactive
-                ? "rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-700"
-                : "rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800"
-            }
-          >
-            {isInactive ? "Inactive" : "Active"}
-          </span>
-          <button
-            type="button"
-            onClick={() => downloadSingleTeamPdf(team)}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Download PDF
-          </button>
+      <div className="border-b border-gray-100 pb-6 flex flex-col md:flex-row md:items-start justify-between gap-4">
+        <div>
+          <Link to="/admin/teams" className="text-sm font-semibold text-blue-600 hover:underline">
+            ← Back to teams
+          </Link>
+          <h1 className="mt-3 text-2xl font-black tracking-tight text-gray-900 md:text-3xl">Edit team</h1>
+          <p className="mt-1 max-w-2xl text-sm text-gray-600">
+            Update team details, members, and captain.
+          </p>
         </div>
-        <p className="mt-1 text-sm text-gray-600">{team.sportType}</p>
+        
+        <button
+          type="button"
+          onClick={() => downloadSingleTeamPdf(team)}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 shrink-0"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Download PDF
+        </button>
       </div>
 
       {error ? (
@@ -292,223 +195,133 @@ export default function AdminTeamDetailPage() {
           {error}
         </p>
       ) : null}
-      {banner ? (
-        <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-          {banner}
-        </p>
-      ) : null}
 
-      {!capId && memberIds.length > 0 ? (
-        <p className="mt-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          This team has no captain. Choose a captain from the members list below.
-        </p>
-      ) : null}
-
-      <section className="mt-8 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-black text-gray-900">Team details</h2>
-        <form onSubmit={handleSaveInfo} className="mt-4 grid gap-4 sm:grid-cols-2">
+      <form onSubmit={handleSubmit} className="mt-8 max-w-5xl space-y-6">
+        <div className="grid gap-4 sm:grid-cols-2">
           <TextField
-            id="edit-team-name"
+            id="team-name"
             name="teamName"
             label="Team name"
             value={teamName}
-            onChange={(e) => {
-              setTeamName(e.target.value);
-              setFieldErrors((f) => {
-                const next = { ...f };
-                delete next.teamName;
-                return next;
-              });
-            }}
+            onChange={(e) => setTeamName(e.target.value)}
             error={fieldErrors.teamName}
             required
           />
           <TextField
-            id="edit-team-sport"
+            id="team-sport"
             name="sportType"
             label="Sport type"
             value={sportType}
-            onChange={(e) => {
-              setSportType(e.target.value);
-              setFieldErrors((f) => {
-                const next = { ...f };
-                delete next.sportType;
-                return next;
-              });
-            }}
+            onChange={(e) => setSportType(e.target.value)}
             error={fieldErrors.sportType}
             required
+            placeholder="e.g. Cricket"
           />
-          <SelectField
-            id="edit-team-society"
-            name="society"
-            label="Society"
-            value={society}
-            onChange={(e) => setSociety(e.target.value)}
-            error={fieldErrors.society}
-            required
-          >
-            <option value="Sliit">Sliit</option>
-            <option value="IEEE">IEEE</option>
-            <option value="FOSS">FOSS</option>
-            <option value="Rotaract">Rotaract</option>
-            <option value="Leo">Leo</option>
-            <option value="Other">Other</option>
-          </SelectField>
+        </div>
+
+        <SelectField
+          id="team-society"
+          name="society"
+          label="Society"
+          value={society}
+          onChange={(e) => setSociety(e.target.value)}
+          error={fieldErrors.society}
+          required
+        >
+          <option value="">Select society…</option>
+          {SOCIETY_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </SelectField>
+
+        <div className="grid gap-4 sm:grid-cols-2">
           <TextField
-            id="edit-team-contact-email"
+            id="team-contact-email"
             name="contactEmail"
-            label="Contact Email"
+            label="Team Contact Email"
             value={contactEmail}
             onChange={(e) => setContactEmail(e.target.value)}
             error={fieldErrors.contactEmail}
+            placeholder="team@example.com"
           />
           <TextField
-            id="edit-team-contact-phone"
+            id="team-contact-phone"
             name="contactPhone"
-            label="Contact Phone"
+            label="Team Contact Phone"
             value={contactPhone}
             onChange={(e) => setContactPhone(e.target.value)}
             error={fieldErrors.contactPhone}
+            placeholder="0771234567"
           />
-          <div className="sm:col-span-2">
-            <Button type="submit" variant="primary" size="sm" disabled={savingInfo}>
-              {savingInfo ? "Saving…" : "Save details"}
-            </Button>
-          </div>
-        </form>
-      </section>
-
-      <section className="mt-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-black text-gray-900">Captain</h2>
-        <p className="mt-1 text-sm text-gray-600">
-          The captain must be a current team member. Choose who leads this team.
-        </p>
-        <div className="mt-4 max-w-md">
-          <SelectField
-            id="detail-captain"
-            label="Captain"
-            value={captainId}
-            onChange={handleCaptainChange}
-            disabled={savingCaptain || memberIds.length === 0}
-          >
-            <option value="">{memberIds.length ? "Select captain…" : "Add members first"}</option>
-            {memberList.map((m) => {
-              const id = refToId(m);
-              if (!id) return null;
-              return (
-                <option key={id} value={id}>
-                  {memberName(m)}
-                </option>
-              );
-            })}
-          </SelectField>
         </div>
-      </section>
 
-      <section className="mt-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-black text-gray-900">Members</h2>
-        <p className="mt-1 text-sm text-gray-600">
-          Remove a player from the roster. You cannot remove the captain until another member is assigned as captain.
-        </p>
-        {memberList.length === 0 ? (
-          <p className="mt-4 text-sm text-gray-500">No members yet. Add players below.</p>
-        ) : (
-          <ul className="mt-4 divide-y divide-gray-100 rounded-xl border border-gray-100">
-            {memberList.map((m) => {
-              const id = refToId(m);
-              if (!id) return null;
-              const isCap = capId === id;
-              return (
-                <li key={id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                  <div>
-                    <p className="font-semibold text-gray-900">{memberName(m)}</p>
-                    {typeof m === "object" && m?.studentId ? (
-                      <p className="text-xs text-gray-500">{m.studentId}</p>
-                    ) : null}
-                    {isCap ? (
-                      <span className="mt-1 inline-block rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-800">
-                        Captain
-                      </span>
-                    ) : null}
-                  </div>
-                  <button
-                    type="button"
-                    className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
-                    disabled={Boolean(removeBusy)}
-                    onClick={() => handleRemoveMember(id)}
-                  >
-                    {removeBusy === id ? "…" : "Remove"}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        <h3 className="mt-8 text-sm font-bold text-gray-900">Add players</h3>
-        <p className="mt-1 text-xs text-gray-500">Only players that are not already on this team are listed.</p>
-        {playersNotInTeam.length === 0 ? (
-          <p className="mt-3 text-sm text-gray-500">No additional players available to add.</p>
-        ) : (
-          <>
-            <div className="mt-3">
-              <PlayerPicker
-                players={playersNotInTeam}
-                selectedIds={addMemberIds}
-                onChange={setAddMemberIds}
-                disabled={addingMembers}
-              />
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-4"
-              disabled={addingMembers || addMemberIds.length === 0}
-              onClick={handleAddMembers}
-            >
-              {addingMembers ? "Adding…" : "Add selected players"}
-            </Button>
-          </>
-        )}
-      </section>
-
-      <section className="mt-6 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-black text-gray-900">Status</h2>
-        <p className="mt-1 text-sm text-gray-600">
-          Deactivated teams stay in the system but can be hidden from selections elsewhere.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-3">
-          {!isInactive ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="!border-red-200 !text-red-700"
-              onClick={() => setDeactivateOpen(true)}
-            >
-              Deactivate team
-            </Button>
-          ) : (
-            <Button type="button" variant="primary" size="sm" onClick={handleReactivate}>
-              Reactivate team
-            </Button>
-          )}
+        <div>
+          <p className="mb-1.5 text-sm font-semibold text-gray-700">Players</p>
+          <p className="mb-1 text-xs text-gray-500">Select at least one player. The captain must be chosen from this list.</p>
+          <p className="mb-2 text-xs text-gray-500">Players already assigned to another active team are disabled.</p>
+          {fieldErrors.members ? (
+            <p className="mb-2 text-sm text-red-600" role="alert">
+              {fieldErrors.members}
+            </p>
+          ) : null}
+          <PlayerPicker
+            players={players}
+            selectedIds={memberIds}
+            onChange={setMemberIds}
+            disabled={saving}
+            showSearch
+            searchPlaceholder="Search players by name or email..."
+            isOptionDisabled={(player) => {
+              if (memberIdsSet.has(String(player._id))) return "";
+              return getAssignedTeamLabel(player);
+            }}
+          />
         </div>
-      </section>
 
-      <ConfirmDialog
-        open={deactivateOpen}
-        title="Deactivate this team?"
-        message="The team will be marked inactive. You can reactivate it later from this page."
-        confirmLabel="Deactivate"
-        cancelLabel="Cancel"
-        danger
-        loading={deactivateBusy}
-        onCancel={() => !deactivateBusy && setDeactivateOpen(false)}
-        onConfirm={handleDeactivate}
-      />
+        <SelectField
+          id="team-captain"
+          name="captain"
+          label="Captain"
+          value={captainId}
+          onChange={(e) => setCaptainId(e.target.value)}
+          error={fieldErrors.captain}
+          required
+          disabled={captainOptions.length === 0}
+        >
+          <option value="">{captainOptions.length ? "Select captain…" : "Select players first"}</option>
+          {captainOptions.map((p) => (
+            <option key={p._id} value={p._id}>
+              {p.fullName ?? refToId(p)}
+              {p.studentId ? ` (${p.studentId})` : ""}
+            </option>
+          ))}
+        </SelectField>
+
+        <div className="flex items-center gap-2 mt-4">
+          <input
+            type="checkbox"
+            id="team-is-active"
+            checked={isActive}
+            onChange={(e) => setIsActive(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <label htmlFor="team-is-active" className="text-sm font-medium text-gray-700">
+            Team is active
+          </label>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">Inactive teams stay in the system but won't be shown in active listings.</p>
+
+        <div className="flex flex-wrap gap-3 border-t border-gray-100 pt-6">
+          <Button type="submit" variant="primary" size="sm" disabled={saving || players.length === 0}>
+            {saving ? "Saving…" : "Save changes"}
+          </Button>
+          <Button type="button" variant="outline" size="sm" disabled={saving} onClick={() => navigate("/admin/teams")}>
+            Cancel
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }
