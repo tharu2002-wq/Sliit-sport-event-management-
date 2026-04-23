@@ -4,6 +4,7 @@ const Team = require("../models/Team");
 const Match = require("../models/Match");
 const Result = require("../models/Result");
 const { generateGeminiText } = require("../utils/gemini");
+const { MATCH_DETAIL_POPULATE } = require("../utils/matchPopulate");
 
 
 const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
@@ -185,6 +186,143 @@ ${JSON.stringify(contextPayload, null, 2)}`;
   }
 };
 
+function teamContextFromMatchTeam(t) {
+  if (!t || typeof t !== "object") return null;
+  const captain =
+    t.captain && typeof t.captain === "object"
+      ? { fullName: t.captain.fullName, studentId: t.captain.studentId }
+      : null;
+  const members = Array.isArray(t.members)
+    ? t.members.map((p) =>
+        p && typeof p === "object"
+          ? { fullName: p.fullName, studentId: p.studentId }
+          : null
+      )
+    : [];
+  return {
+    teamName: t.teamName,
+    sportType: t.sportType,
+    captain,
+    members: members.filter(Boolean),
+  };
+}
+
+// @desc    AI-generated recap for a completed match (fixture, venue, rosters, result)
+// @route   GET /api/matches/:id/ai-summary
+// @access  Private
+const getMatchAiSummary = async (req, res) => {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
+    if (!apiKey) {
+      return res.status(503).json({
+        message:
+          "AI summary is not configured. Set GEMINI_API_KEY in the server environment (never expose it in the client).",
+      });
+    }
+
+    const match = await Match.findById(req.params.id).populate(MATCH_DETAIL_POPULATE).lean();
+
+    if (!match) {
+      return res.status(404).json({ message: "Match not found" });
+    }
+
+    if (match.status !== "completed") {
+      return res.status(400).json({
+        message: "AI match summary is only available for matches marked as completed.",
+      });
+    }
+
+    const resultDoc = await Result.findOne({ match: match._id })
+      .populate("winner", "teamName")
+      .populate({
+        path: "playerNotes.player",
+        select: "fullName studentId",
+      })
+      .lean();
+
+    const ev = match.event;
+    const venue = match.venue;
+
+    const playerNotesForContext = (resultDoc?.playerNotes || [])
+      .map((row) => {
+        const pl = row.player;
+        const note = typeof row.note === "string" ? row.note.trim() : "";
+        return {
+          player:
+            pl && typeof pl === "object"
+              ? { fullName: pl.fullName, studentId: pl.studentId }
+              : null,
+          note,
+        };
+      })
+      .filter((r) => r.note || r.player);
+
+    const contextPayload = {
+      match: {
+        status: match.status,
+        date: match.date ? new Date(match.date).toISOString().slice(0, 10) : null,
+        startTime: match.startTime,
+        endTime: match.endTime,
+        round: match.round,
+        notes: typeof match.notes === "string" ? match.notes.trim() : "",
+      },
+      event: ev
+        ? {
+            title: ev.title,
+            sportType: ev.sportType,
+            startDate: ev.startDate,
+            endDate: ev.endDate,
+            status: ev.status,
+            description:
+              typeof ev.description === "string" && ev.description.length > 2000
+                ? `${ev.description.slice(0, 2000)}…`
+                : ev.description,
+          }
+        : null,
+      venue: venue
+        ? {
+            venueName: venue.venueName,
+            location: venue.location,
+            capacity: venue.capacity,
+            status: venue.status,
+          }
+        : null,
+      teamA: teamContextFromMatchTeam(match.teamA),
+      teamB: teamContextFromMatchTeam(match.teamB),
+      result: resultDoc
+        ? {
+            scoreA: resultDoc.scoreA,
+            scoreB: resultDoc.scoreB,
+            winnerTeamName: resultDoc.winner?.teamName ?? null,
+            isDraw: !resultDoc.winner,
+            officialNotes: typeof resultDoc.notes === "string" ? resultDoc.notes.trim() : "",
+            playerNotes: playerNotesForContext,
+          }
+        : { message: "No result record in the system for this match yet." },
+    };
+
+    const prompt = `You are a concise sports writer for SLIIT university athletics. Write a professional match recap (about 180–320 words) based ONLY on the JSON data below.
+Cover the fixture context, the two sides and squads where listed, venue and schedule if present, and the outcome plus any official or per-player notes if provided. Do not invent scores, players, or events not in the data.
+If the result section says there is no result record, say that briefly and recap what is known from the fixture.
+Use short paragraphs. Do not use markdown headings; plain text only.
+
+DATA:
+${JSON.stringify(contextPayload, null, 2)}`;
+
+    const summary = await generateGeminiText(apiKey, DEFAULT_MODEL, prompt);
+
+    return res.status(200).json({
+      summary,
+      model: DEFAULT_MODEL,
+    });
+  } catch (error) {
+    return res.status(502).json({
+      message: error.message || "Could not generate AI match summary",
+    });
+  }
+};
+
 module.exports = {
   getPlayerAiSummary,
+  getMatchAiSummary,
 };
