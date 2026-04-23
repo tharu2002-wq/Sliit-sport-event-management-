@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { deleteTeam, getTeams } from "../../../api/teams";
+import { deleteTeam, getTeams, updateTeam } from "../../../api/teams";
 import { AdminTeamsTable } from "../../../components/admin/teams/AdminTeamsTable";
 import { Button } from "../../../components/ui/Button";
 import { SearchBar } from "../../../components/ui/SearchBar";
@@ -69,6 +69,19 @@ export default function AdminTeamsListPage() {
       setError(getApiErrorMessage(err, "Could not delete team."));
     } finally {
       setDeletingTeamId("");
+    }
+  }, []);
+
+  const handleToggleActive = useCallback(async (team) => {
+    if (!team?._id) return;
+    const newStatus = team.isActive === false ? true : false;
+    try {
+      await updateTeam(team._id, { isActive: newStatus });
+      setTeams((prev) =>
+        prev.map((t) => (t._id === team._id ? { ...t, isActive: newStatus } : t))
+      );
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Could not update team status."));
     }
   }, []);
 
@@ -147,7 +160,12 @@ export default function AdminTeamsListPage() {
             No teams match the current filters.
           </p>
         ) : (
-          <AdminTeamsTable teams={filtered} deletingTeamId={deletingTeamId} onDeleteTeam={handleDeleteTeam} />
+          <AdminTeamsTable 
+            teams={filtered} 
+            deletingTeamId={deletingTeamId} 
+            onDeleteTeam={handleDeleteTeam} 
+            onToggleActive={handleToggleActive}
+          />
         )}
       </div>
     </div>

@@ -22,7 +22,7 @@ function contactPhone(team) {
   return String(team?.contactPhone ?? "").trim() || "—";
 }
 
-export function AdminTeamsTable({ teams, deletingTeamId, onDeleteTeam }) {
+export function AdminTeamsTable({ teams, deletingTeamId, onDeleteTeam, onToggleActive }) {
   if (teams.length === 0) {
     return (
       <p className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 px-4 py-12 text-center text-sm text-gray-500">
@@ -43,15 +43,18 @@ export function AdminTeamsTable({ teams, deletingTeamId, onDeleteTeam }) {
                 <p className="font-bold text-gray-900">{t.teamName}</p>
                 <p className="mt-0.5 text-xs text-gray-500">{buildCustomTeamId(t)}</p>
               </div>
-              <span
+              <button
+                type="button"
+                onClick={() => onToggleActive?.(t)}
+                title="Toggle Status"
                 className={
                   t.isActive === false
-                    ? "rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-xs font-black tracking-wider text-gray-600"
-                    : "rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-xs font-black tracking-wider text-emerald-800"
+                    ? "rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-xs font-black tracking-wider text-gray-600 transition-colors hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300"
+                    : "rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-xs font-black tracking-wider text-emerald-800 transition-colors hover:bg-gray-100 hover:text-gray-600 hover:border-gray-200"
                 }
               >
                 {t.isActive === false ? "INACTIVE" : "ACTIVE"}
-              </span>
+              </button>
             </div>
             <p className="mt-2 text-xs text-gray-600">{t.society || "—"} · {t.sportType || "—"}</p>
             <p className="mt-1 text-xs text-gray-600">Captain: {captainLabel(t.captain)} · Members: {Array.isArray(t.members) ? t.members.length : 0}</p>
@@ -105,15 +108,18 @@ export function AdminTeamsTable({ teams, deletingTeamId, onDeleteTeam }) {
                   <p className="text-xs font-medium text-gray-500">{contactPhone(t)}</p>
                 </td>
                 <td className="px-4 py-3">
-                  <span
+                  <button
+                    type="button"
+                    onClick={() => onToggleActive?.(t)}
+                    title="Toggle Status"
                     className={
                       t.isActive === false
-                        ? "inline-flex rounded-full border border-gray-300 bg-gray-100 px-3 py-1 text-xs font-bold tracking-wide text-gray-600"
-                        : "inline-flex rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-xs font-bold tracking-wide text-emerald-800"
+                        ? "inline-flex rounded-full border border-gray-300 bg-gray-100 px-3 py-1 text-xs font-bold tracking-wide text-gray-600 transition-colors hover:bg-emerald-100 hover:text-emerald-800 hover:border-emerald-300"
+                        : "inline-flex rounded-full border border-emerald-300 bg-emerald-100 px-3 py-1 text-xs font-bold tracking-wide text-emerald-800 transition-colors hover:bg-gray-100 hover:text-gray-600 hover:border-gray-300"
                     }
                   >
                     {t.isActive === false ? "INACTIVE" : "ACTIVE"}
-                  </span>
+                  </button>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-2">
