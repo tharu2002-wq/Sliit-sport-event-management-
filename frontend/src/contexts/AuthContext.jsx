@@ -1,11 +1,45 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { loginRequest, registerRequest } from "../api/auth";
-import { clearAuthSession, getStoredUser, setAuthSession } from "../utils/authStorage";
+import { getProfile } from "../api/users";
+import { clearAuthSession, getAuthToken, getStoredUser, setAuthSession } from "../utils/authStorage";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => getStoredUser());
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const bootstrap = async () => {
+      const token = getAuthToken();
+      const storedUser = getStoredUser();
+
+      if (!token) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      if (storedUser?._id) {
+        setUser(storedUser);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const profile = await getProfile();
+        setAuthSession({ ...profile, token });
+        setUser(profile);
+      } catch {
+        clearAuthSession();
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    bootstrap();
+  }, []);
 
   const login = async (credentials) => {
     const data = await loginRequest(credentials);
@@ -40,12 +74,13 @@ export function AuthProvider({ children }) {
     () => ({
       user,
       isAuthenticated: Boolean(user),
+      loading,
       login,
       register,
       logout,
       updateUser,
     }),
-    [user]
+    [loading, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

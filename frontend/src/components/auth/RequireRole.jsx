@@ -6,9 +6,13 @@ import { useAuth } from "../../contexts/AuthContext";
  * Otherwise redirects home (or to login if not authenticated).
  */
 export function RequireRole({ roles, children }) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
   const location = useLocation();
   const allowed = Array.isArray(roles) ? roles : [roles];
+
+  if (loading) {
+    return null;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
