@@ -39,6 +39,7 @@ export default function AdminTeamRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("pending");
+  const [detailsFor, setDetailsFor] = useState(null);
   const [acceptingId, setAcceptingId] = useState("");
   const [rejectFor, setRejectFor] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -67,6 +68,10 @@ export default function AdminTeamRequestsPage() {
     setRejectError("");
     setRejectReason("");
     setRejectFor(req);
+  };
+
+  const closeDetails = () => {
+    setDetailsFor(null);
   };
 
   const submitAccept = async (req) => {
@@ -187,6 +192,13 @@ export default function AdminTeamRequestsPage() {
                         <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
+                            onClick={() => setDetailsFor(r)}
+                            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                          >
+                            View details
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => submitAccept(r)}
                             disabled={acceptingId === String(r._id)}
                             className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
@@ -202,11 +214,26 @@ export default function AdminTeamRequestsPage() {
                           </button>
                         </div>
                       ) : r.status === "approved" && r.createdTeam ? (
-                        <Link to={`/admin/teams/${r.createdTeam}`} className="text-xs font-semibold text-blue-700 hover:text-blue-800">
-                          Open team
-                        </Link>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setDetailsFor(r)}
+                            className="text-xs font-semibold text-blue-700 hover:text-blue-800"
+                          >
+                            View details
+                          </button>
+                          <Link to={`/admin/teams/${r.createdTeam}`} className="text-xs font-semibold text-blue-700 hover:text-blue-800">
+                            Open team
+                          </Link>
+                        </div>
                       ) : (
-                        <span className="text-xs text-gray-400">—</span>
+                        <button
+                          type="button"
+                          onClick={() => setDetailsFor(r)}
+                          className="text-xs font-semibold text-blue-700 hover:text-blue-800"
+                        >
+                          View details
+                        </button>
                       )}
                     </td>
                   </tr>
@@ -216,6 +243,91 @@ export default function AdminTeamRequestsPage() {
           </table>
         </div>
       )}
+
+      {detailsFor ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="details-tr-title"
+        >
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
+              <div>
+                <h2 id="details-tr-title" className="text-lg font-black text-gray-900">
+                  Team request details
+                </h2>
+                <p className="mt-1 text-sm text-gray-600">{detailsFor.teamName}</p>
+              </div>
+              <StatusBadge status={detailsFor.status} />
+            </div>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <DetailItem label="Student" value={detailsFor.user?.name ?? "—"} />
+              <DetailItem label="Email" value={detailsFor.user?.email ?? "—"} />
+              <DetailItem label="Sport type" value={detailsFor.sportType ?? "—"} />
+              <DetailItem label="Society" value={detailsFor.society ?? "—"} />
+              <DetailItem label="Captain" value={personLabel(detailsFor.captain)} />
+              <DetailItem label="Members" value={String(Array.isArray(detailsFor.members) ? detailsFor.members.length : 0)} />
+              <DetailItem label="Contact email" value={detailsFor.contactEmail ?? "—"} />
+              <DetailItem label="Contact phone" value={detailsFor.contactPhone ?? "—"} />
+              <DetailItem label="Requested" value={detailsFor.createdAt ? new Date(detailsFor.createdAt).toLocaleString() : "—"} />
+              <DetailItem label="Reviewed" value={detailsFor.reviewedAt ? new Date(detailsFor.reviewedAt).toLocaleString() : "—"} />
+            </div>
+
+            {Array.isArray(detailsFor.members) && detailsFor.members.length > 0 ? (
+              <div className="mt-4">
+                <p className="text-sm font-semibold text-gray-900">Players</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {detailsFor.members.map((member) => (
+                    <span
+                      key={String(member?._id ?? member)}
+                      className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"
+                    >
+                      {personLabel(member)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeDetails}
+                className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Close
+              </button>
+              {detailsFor.status === "pending" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      closeDetails();
+                      await submitAccept(detailsFor);
+                    }}
+                    disabled={acceptingId === String(detailsFor._id)}
+                    className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {acceptingId === String(detailsFor._id) ? "Approving…" : "Accept request"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      closeDetails();
+                      openReject(detailsFor);
+                    }}
+                    className="rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+                  >
+                    Reject
+                  </button>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {rejectFor ? (
         <div
@@ -263,6 +375,15 @@ export default function AdminTeamRequestsPage() {
           </form>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function DetailItem({ label, value }) {
+  return (
+    <div className="rounded-xl border border-gray-100 bg-gray-50/80 px-4 py-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
+      <p className="mt-1 text-sm font-medium text-gray-900">{value}</p>
     </div>
   );
 }

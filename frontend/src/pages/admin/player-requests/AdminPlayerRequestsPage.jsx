@@ -44,6 +44,7 @@ export default function AdminPlayerRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("pending");
+  const [detailsFor, setDetailsFor] = useState(null);
 
   const [acceptFor, setAcceptFor] = useState(null);
   const [acceptForm, setAcceptForm] = useState({
@@ -89,6 +90,10 @@ export default function AdminPlayerRequestsPage() {
       gender: "male",
       sportTypesRaw: "",
     });
+  };
+
+  const closeDetails = () => {
+    setDetailsFor(null);
   };
 
   const closeAccept = () => {
@@ -225,6 +230,13 @@ export default function AdminPlayerRequestsPage() {
                       <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
+                          onClick={() => setDetailsFor(r)}
+                          className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                        >
+                          View details
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => openAccept(r)}
                           className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                         >
@@ -243,14 +255,29 @@ export default function AdminPlayerRequestsPage() {
                         </button>
                       </div>
                     ) : r.status === "approved" && r.createdPlayer ? (
-                      <Link
-                        to={`/admin/players/${r.createdPlayer}/edit`}
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setDetailsFor(r)}
+                          className="text-xs font-semibold text-blue-700 hover:text-blue-800"
+                        >
+                          View details
+                        </button>
+                        <Link
+                          to={`/admin/players/${r.createdPlayer}/edit`}
+                          className="text-xs font-semibold text-blue-700 hover:text-blue-800"
+                        >
+                          Open player
+                        </Link>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setDetailsFor(r)}
                         className="text-xs font-semibold text-blue-700 hover:text-blue-800"
                       >
-                        Open player
-                      </Link>
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
+                        View details
+                      </button>
                     )}
                   </td>
                 </tr>
@@ -259,6 +286,76 @@ export default function AdminPlayerRequestsPage() {
           </table>
         </div>
       )}
+
+      {detailsFor ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="details-pr-title"
+        >
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
+              <div>
+                <h2 id="details-pr-title" className="text-lg font-black text-gray-900">
+                  Player request details
+                </h2>
+                <p className="mt-1 text-sm text-gray-600">{detailsFor.fullName}</p>
+              </div>
+              <StatusBadge status={detailsFor.status} />
+            </div>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <DetailItem label="Student ID" value={detailsFor.studentId ?? "—"} />
+              <DetailItem label="Email" value={detailsFor.email ?? "—"} />
+              <DetailItem label="Faculty" value={detailsFor.faculty ?? "—"} />
+              <DetailItem label="Academic year" value={detailsFor.academicYear ?? "—"} />
+              <DetailItem label="Department" value={detailsFor.department ?? "—"} />
+              <DetailItem label="Age" value={detailsFor.age != null ? String(detailsFor.age) : "—"} />
+              <DetailItem label="Requested" value={detailsFor.createdAt ? new Date(detailsFor.createdAt).toLocaleString() : "—"} />
+              <DetailItem label="Reviewed" value={detailsFor.reviewedAt ? new Date(detailsFor.reviewedAt).toLocaleString() : "—"} />
+            </div>
+
+            {Array.isArray(detailsFor.sportTypes) && detailsFor.sportTypes.length > 0 ? (
+              <div className="mt-4">
+                <p className="text-sm font-semibold text-gray-900">Sport types</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {detailsFor.sportTypes.map((sport) => (
+                    <span
+                      key={String(sport)}
+                      className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"
+                    >
+                      {sport}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeDetails}
+                className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Close
+              </button>
+              {detailsFor.status === "pending" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeDetails();
+                    openAccept(detailsFor);
+                  }}
+                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  Accept request
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {acceptFor ? (
         <div
@@ -418,6 +515,15 @@ export default function AdminPlayerRequestsPage() {
           </form>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function DetailItem({ label, value }) {
+  return (
+    <div className="rounded-xl border border-gray-100 bg-gray-50/80 px-4 py-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
+      <p className="mt-1 text-sm font-medium text-gray-900">{value}</p>
     </div>
   );
 }
