@@ -107,6 +107,7 @@ function App() {
         {/* Teams */}
         <Route path="teams" element={<StudentTeamsPage />} />
         <Route path="teams/request" element={<StudentTeamRequestPage />} />
+        <Route path="teams/request/:requestId/edit" element={<StudentTeamRequestPage />} />
         <Route path="teams/:teamId" element={<StudentTeamDetailPage />} />
         
         {/* Players */}

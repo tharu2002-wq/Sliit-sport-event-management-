@@ -14,6 +14,7 @@ const {
 router.get("/me", protect, authorizeRoles("student", "admin", "organizer"), getMyTeamRequest);
 router.get("/me/all", protect, authorizeRoles("student", "admin", "organizer"), getMyTeamRequests);
 router.post("/", protect, authorizeRoles("student", "admin", "organizer"), createTeamRequest);
+router.patch("/:id", protect, authorizeRoles("student", "admin", "organizer"), updateTeamRequest);
 router.put("/:id", protect, authorizeRoles("student", "admin", "organizer"), updateTeamRequest);
 
 router.get("/", protect, authorizeRoles("admin", "organizer", "student"), listTeamRequests);
