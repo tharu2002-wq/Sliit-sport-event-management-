@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { createTeamRequest } from "../../../api/teamRequests";
+import { useNavigate, useParams } from "react-router-dom";
+import { createTeamRequest, getMyTeamRequests, updateTeamRequest } from "../../../api/teamRequests";
 import { getPlayers } from "../../../api/players";
 import { PlayerPicker } from "../../../components/admin/teams/PlayerPicker";
 import { DashboardPageHeader } from "../../../components/student-dashboard/DashboardPageHeader";
@@ -15,6 +15,9 @@ const SOCIETY_OPTIONS = ["Sliit", "IEEE", "FOSS", "Rotaract", "Leo", "Other"];
 
 export default function StudentTeamRequestPage() {
   const navigate = useNavigate();
+  const { requestId } = useParams();
+  const isEditing = Boolean(requestId);
+  
   const [allPlayers, setAllPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -36,10 +39,33 @@ export default function StudentTeamRequestPage() {
     let cancelled = false;
     (async () => {
       try {
-        const players = await getPlayers();
-        if (!cancelled) setAllPlayers(Array.isArray(players) ? players : []);
+        const [players, historyData] = await Promise.all([
+          getPlayers(),
+          isEditing ? getMyTeamRequests() : Promise.resolve([])
+        ]);
+
+        if (cancelled) return;
+        
+        setAllPlayers(Array.isArray(players) ? players : []);
+
+        if (isEditing) {
+          const reqToEdit = historyData.find(r => String(r._id) === String(requestId));
+          if (reqToEdit) {
+            setFormData({
+              teamName: reqToEdit.teamName || "",
+              sportType: reqToEdit.sportType || "",
+              society: reqToEdit.society || "Sliit",
+              contactEmail: reqToEdit.contactEmail || "",
+              contactPhone: reqToEdit.contactPhone || "",
+              memberIds: Array.isArray(reqToEdit.members) ? reqToEdit.members.map(m => typeof m === 'object' ? String(m._id) : String(m)) : [],
+              captainId: typeof reqToEdit.captain === 'object' ? String(reqToEdit.captain._id) : String(reqToEdit.captain),
+            });
+          } else {
+            setError("Request not found.");
+          }
+        }
       } catch (err) {
-        if (!cancelled) setError(getApiErrorMessage(err, "Could not load players."));
+        if (!cancelled) setError(getApiErrorMessage(err, "Could not load data."));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -47,7 +73,7 @@ export default function StudentTeamRequestPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isEditing, requestId]);
 
   const captainOptions = useMemo(() => {
     const set = new Set(formData.memberIds.map(String));
@@ -103,10 +129,9 @@ export default function StudentTeamRequestPage() {
     e.preventDefault();
     if (!validate()) return;
     setSubmitting(true);
-    setError("");
     try {
       const members = [...new Set([...formData.memberIds.map(String), String(formData.captainId)])];
-      await createTeamRequest({
+      const payload = {
         teamName: formData.teamName.trim(),
         sportType: formData.sportType.trim(),
         society: formData.society.trim(),
@@ -114,10 +139,16 @@ export default function StudentTeamRequestPage() {
         contactPhone: formData.contactPhone.trim() || undefined,
         captain: formData.captainId,
         members,
-      });
+      };
+
+      if (isEditing) {
+        await updateTeamRequest(requestId, payload);
+      } else {
+        await createTeamRequest(payload);
+      }
       navigate("/student/teams", { replace: true });
     } catch (err) {
-      setError(getApiErrorMessage(err, "Could not submit your team request."));
+      setError(getApiErrorMessage(err, isEditing ? "Could not update your request." : "Could not submit your team request."));
     } finally {
       setSubmitting(false);
     }
@@ -140,8 +171,10 @@ export default function StudentTeamRequestPage() {
           ← Back
         </Button>
         <DashboardPageHeader
-          title="Request new team"
-          description="Submit a request to establish a new sports team at SLIIT. Your request will be reviewed by organisers."
+          title={isEditing ? "Edit team request" : "Request new team"}
+          description={isEditing 
+            ? "Update your existing team request. If it was rejected, updating it will submit it for review again."
+            : "Submit a request to establish a new sports team at SLIIT. Your request will be reviewed by organisers."}
         />
       </div>
 
@@ -282,10 +315,10 @@ export default function StudentTeamRequestPage() {
             {submitting ? (
               <span className="inline-flex items-center gap-2">
                 <LoadingSpinner size="sm" />
-                Sending…
+                {isEditing ? "Updating…" : "Sending…"}
               </span>
             ) : (
-              "Submit Request"
+              isEditing ? "Update & Resubmit" : "Submit Request"
             )}
           </Button>
         </div>

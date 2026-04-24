@@ -37,3 +37,8 @@ export async function acceptTeamRequest(id, payload) {
   const { data } = await api.patch(`/team-requests/${id}/accept`, payload);
   return data;
 }
+
+export async function updateTeamRequest(id, payload) {
+  const { data } = await api.patch(`/team-requests/${id}`, payload);
+  return data;
+}

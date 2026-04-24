@@ -213,6 +213,7 @@ export default function StudentTeamsPage() {
                       <th className="px-4 py-3 font-bold text-gray-700">Members</th>
                       <th className="px-4 py-3 font-bold text-gray-700">Status</th>
                       <th className="px-4 py-3 font-bold text-gray-700">Submitted</th>
+                       <th className="px-4 py-3 font-bold text-gray-700 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -239,6 +240,18 @@ export default function StudentTeamsPage() {
                           </td>
                           <td className="whitespace-nowrap px-4 py-3 text-gray-500">
                             {request.createdAt ? new Date(request.createdAt).toLocaleString() : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            {(status === "pending" || status === "rejected") && (
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                className="rounded-full px-3 text-[10px]"
+                                onClick={() => navigate(`/student/teams/request/${request._id}/edit`)}
+                              >
+                                {status === "rejected" ? "Resubmit" : "Edit"}
+                              </Button>
+                            )}
                           </td>
                         </tr>
                       );
