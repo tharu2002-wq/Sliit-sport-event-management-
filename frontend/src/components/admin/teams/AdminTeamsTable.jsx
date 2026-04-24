@@ -4,7 +4,7 @@ import { Button } from "../../ui/Button";
 function captainLabel(c) {
   if (!c) return "—";
   if (typeof c === "object" && c !== null && "fullName" in c) return c.fullName;
-  return "—";
+  return String(c);
 }
 
 function buildCustomTeamId(team) {
