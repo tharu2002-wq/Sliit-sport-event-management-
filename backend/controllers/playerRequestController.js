@@ -9,10 +9,6 @@ const User = require("../models/User");
  */
 const createPlayerRequest = async (req, res) => {
   try {
-    if (req.user.role !== "student") {
-      return res.status(403).json({ message: "Only students can submit a player request." });
-    }
-
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -69,10 +65,6 @@ const createPlayerRequest = async (req, res) => {
  */
 const getMyPlayerRequest = async (req, res) => {
   try {
-    if (req.user.role !== "student") {
-      return res.status(403).json({ message: "Forbidden" });
-    }
-
     const request = await PlayerRequest.findOne({ user: req.user._id })
       .sort({ createdAt: -1 })
       .lean();

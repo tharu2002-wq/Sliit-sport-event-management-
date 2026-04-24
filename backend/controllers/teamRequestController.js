@@ -96,10 +96,6 @@ async function validateTeamRequestPayload(payload, options = {}) {
  */
 const createTeamRequest = async (req, res) => {
   try {
-    if (req.user.role !== "student") {
-      return res.status(403).json({ message: "Only students can submit a team request." });
-    }
-
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -149,10 +145,6 @@ const createTeamRequest = async (req, res) => {
  */
 const getMyTeamRequest = async (req, res) => {
   try {
-    if (req.user.role !== "student") {
-      return res.status(403).json({ message: "Forbidden" });
-    }
-
     const request = await TeamRequest.findOne({ user: req.user._id })
       .populate("captain", "fullName studentId email")
       .populate("members", "fullName studentId email")
@@ -171,10 +163,6 @@ const getMyTeamRequest = async (req, res) => {
  */
 const getMyTeamRequests = async (req, res) => {
   try {
-    if (req.user.role !== "student") {
-      return res.status(403).json({ message: "Forbidden" });
-    }
-
     const requests = await TeamRequest.find({ user: req.user._id })
       .populate("captain", "fullName studentId email")
       .populate("members", "fullName studentId email")
@@ -302,6 +290,74 @@ const rejectTeamRequest = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Update a pending or rejected team request (Resubmit/Edit)
+ * @route   PUT /api/team-requests/:id
+ * @access  Private (student, admin, organizer)
+ */
+const updateTeamRequest = async (req, res) => {
+  try {
+    const request = await TeamRequest.findById(req.params.id);
+    if (!request) {
+      return res.status(404).json({ message: "Request not found" });
+    }
+
+    // Ensure it belongs to the user (unless admin/organizer)
+    if (req.user.role === "student" && String(request.user) !== String(req.user._id)) {
+      return res.status(403).json({ message: "You can only edit your own requests." });
+    }
+
+    // Only allow editing pending or rejected
+    if (request.status === "approved") {
+      return res.status(400).json({ message: "Approved requests cannot be edited." });
+    }
+
+    // If resubmitting a rejected one, check if another pending one exists
+    if (request.status === "rejected" || req.user.role === "student") {
+      const otherPending = await TeamRequest.findOne({
+        user: request.user,
+        status: "pending",
+        _id: { $ne: request._id }
+      });
+      if (otherPending) {
+        return res.status(400).json({ message: "There is already a pending team request for this user." });
+      }
+    }
+
+    const validation = await validateTeamRequestPayload(req.body, { enforceTeamConflicts: false });
+    if (validation.message) {
+      return res.status(400).json({ message: validation.message, conflicts: validation.conflicts });
+    }
+
+    // Update fields
+    request.teamName = validation.payload.teamName;
+    request.sportType = validation.payload.sportType;
+    request.society = validation.payload.society;
+    request.contactEmail = validation.payload.contactEmail;
+    request.contactPhone = validation.payload.contactPhone;
+    request.captain = validation.captainId;
+    request.members = validation.normalizedMembers;
+    
+    // Reset status to pending
+    request.status = "pending";
+    request.rejectReason = "";
+    request.reviewedAt = undefined;
+    request.reviewedBy = undefined;
+
+    await request.save();
+
+    const populated = await TeamRequest.findById(request._id)
+      .populate("user", "name email role")
+      .populate("captain", "fullName studentId email")
+      .populate("members", "fullName studentId email")
+      .lean();
+
+    return res.status(200).json({ message: "Request updated", request: populated });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createTeamRequest,
   getMyTeamRequest,
@@ -309,4 +365,5 @@ module.exports = {
   listTeamRequests,
   acceptTeamRequest,
   rejectTeamRequest,
+  updateTeamRequest,
 };
