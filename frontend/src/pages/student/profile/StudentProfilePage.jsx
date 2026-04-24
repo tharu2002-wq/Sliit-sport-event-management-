@@ -54,7 +54,7 @@ function UniqueTeamsSection({ teams, title, emptyHint }) {
           {teams.map((team) => {
             const active = team.isActive !== false;
             const memberCount = Array.isArray(team.members) ? team.members.length : 0;
-            const captainName = team.captain?.fullName ?? "—";
+            const captainName = typeof team.captain === "object" ? team.captain?.fullName ?? "—" : team.captain || "—";
             const { email, phone } = teamContactLine(team);
 
             return (

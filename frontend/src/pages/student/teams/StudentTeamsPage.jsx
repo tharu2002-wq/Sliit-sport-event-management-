@@ -218,10 +218,12 @@ export default function StudentTeamsPage() {
                   <tbody className="divide-y divide-gray-100">
                     {myTeamRequests.map((request) => {
                       const memberCount = Array.isArray(request.members) ? request.members.length : 0;
-                      const captainName =
-                        typeof request.captain === "object" && request.captain?.fullName
-                          ? request.captain.fullName
-                          : "—";
+                      let captainName = "—";
+                      if (typeof request.captain === "object" && request.captain?.fullName) {
+                        captainName = request.captain.fullName;
+                      } else if (typeof request.captain === "string" && request.captain.trim() !== "") {
+                        captainName = request.captain;
+                      }
                       const status = String(request.status ?? "").toLowerCase();
                       return (
                         <tr key={String(request._id)} className="align-top">
