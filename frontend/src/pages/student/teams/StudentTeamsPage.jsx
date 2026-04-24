@@ -75,6 +75,7 @@ export default function StudentTeamsPage() {
   const [myTeamRequests, setMyTeamRequests] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [clearingId, setClearingId] = useState("");
+  const [detailsFor, setDetailsFor] = useState(null);
 
   const loadData = async () => {
     setError("");
@@ -108,6 +109,10 @@ export default function StudentTeamsPage() {
     } finally {
       setClearingId("");
     }
+  };
+
+  const closeDetails = () => {
+    setDetailsFor(null);
   };
 
   const sportOptions = useMemo(() => collectTeamSportTypes(rawTeams), [rawTeams]);
@@ -251,6 +256,15 @@ export default function StudentTeamsPage() {
                           </td>
                           <td className="px-4 py-3 text-center">
                             <div className="flex flex-col gap-1 sm:flex-row sm:justify-center sm:gap-2">
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                className="rounded-full px-3 text-[10px]"
+                                onClick={() => setDetailsFor(request)}
+                                disabled={clearingId === String(request._id)}
+                              >
+                                View details
+                              </Button>
                               {status === "pending" && (
                                 <Button
                                   variant="outline"
@@ -298,6 +312,73 @@ export default function StudentTeamsPage() {
           </section>
         </>
       )}
+
+      {detailsFor ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="student-team-request-details"
+        >
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4">
+              <div>
+                <h2 id="student-team-request-details" className="text-lg font-black text-gray-900">
+                  Team request details
+                </h2>
+                <p className="mt-1 text-sm text-gray-600">{detailsFor.teamName}</p>
+              </div>
+              <TeamRequestStatusBadge status={String(detailsFor.status ?? "").toLowerCase()} />
+            </div>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <DetailItem label="Sport type" value={detailsFor.sportType || "—"} />
+              <DetailItem label="Society" value={detailsFor.society || "—"} />
+              <DetailItem label="Captain" value={typeof detailsFor.captain === "object" ? detailsFor.captain?.fullName ?? "—" : detailsFor.captain || "—"} />
+              <DetailItem label="Members" value={String(Array.isArray(detailsFor.members) ? detailsFor.members.length : 0)} />
+              <DetailItem label="Contact email" value={detailsFor.contactEmail || "—"} />
+              <DetailItem label="Contact phone" value={detailsFor.contactPhone || "—"} />
+              <DetailItem label="Submitted" value={detailsFor.createdAt ? new Date(detailsFor.createdAt).toLocaleString() : "—"} />
+              <DetailItem label="Reviewed" value={detailsFor.reviewedAt ? new Date(detailsFor.reviewedAt).toLocaleString() : "—"} />
+            </div>
+
+            {Array.isArray(detailsFor.members) && detailsFor.members.length > 0 ? (
+              <div className="mt-4">
+                <p className="text-sm font-semibold text-gray-900">Players</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {detailsFor.members.map((member) => (
+                    <span
+                      key={String(member?._id ?? member)}
+                      className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"
+                    >
+                      {typeof member === "object" ? member?.fullName ?? "—" : String(member)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={closeDetails}
+                className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
+  );
+}
+
+function DetailItem({ label, value }) {
+  return (
+    <div className="rounded-xl border border-gray-100 bg-gray-50/80 px-4 py-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
+      <p className="mt-1 text-sm font-medium text-gray-900">{value}</p>
+    </div>
   );
 }
