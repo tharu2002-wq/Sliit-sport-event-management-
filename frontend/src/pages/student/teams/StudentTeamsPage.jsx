@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import teamPlaceholder from "../../../assets/team.jpg";
-import { getMyTeamRequests } from "../../../api/teamRequests";
+import { getMyTeamRequests, deleteTeamRequest } from "../../../api/teamRequests";
 import { getTeams } from "../../../api/teams";
 import { TeamCard } from "../../../components/teams/TeamCard";
 import { DashboardPageHeader } from "../../../components/student-dashboard/DashboardPageHeader";
@@ -74,33 +74,41 @@ export default function StudentTeamsPage() {
   const [sportType, setSportType] = useState("");
   const [myTeamRequests, setMyTeamRequests] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [clearingId, setClearingId] = useState("");
+
+  const loadData = async () => {
+    setError("");
+    try {
+      const [teamsData, historyData] = await Promise.all([
+        getTeams(),
+        getMyTeamRequests()
+      ]);
+      setRawTeams(Array.isArray(teamsData) ? teamsData : []);
+      setMyTeamRequests(Array.isArray(historyData) ? historyData : []);
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Could not load data."));
+    } finally {
+      setLoading(false);
+      setHistoryLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setError("");
-      try {
-        const [teamsData, historyData] = await Promise.all([
-          getTeams(),
-          getMyTeamRequests()
-        ]);
-        if (!cancelled) {
-          setRawTeams(Array.isArray(teamsData) ? teamsData : []);
-          setMyTeamRequests(Array.isArray(historyData) ? historyData : []);
-        }
-      } catch (err) {
-        if (!cancelled) setError(getApiErrorMessage(err, "Could not load data."));
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-          setHistoryLoading(false);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    loadData();
   }, []);
+
+  const handleClearRequest = async (id) => {
+    if (!id || !window.confirm("Are you sure you want to remove this request from your history?")) return;
+    setClearingId(id);
+    try {
+      await deleteTeamRequest(id);
+      await loadData();
+    } catch (err) {
+      alert(getApiErrorMessage(err, "Could not clear request."));
+    } finally {
+      setClearingId("");
+    }
+  };
 
   const sportOptions = useMemo(() => collectTeamSportTypes(rawTeams), [rawTeams]);
 
@@ -242,16 +250,43 @@ export default function StudentTeamsPage() {
                             {request.createdAt ? new Date(request.createdAt).toLocaleString() : "—"}
                           </td>
                           <td className="px-4 py-3 text-center">
-                            {(status === "pending" || status === "rejected") && (
+                            <div className="flex flex-col gap-1 sm:flex-row sm:justify-center sm:gap-2">
+                              {status === "pending" && (
+                                <Button
+                                  variant="outline"
+                                  size="xs"
+                                  className="rounded-full px-3 text-[10px]"
+                                  onClick={() => navigate(`/student/teams/request/${request._id}/edit`)}
+                                  disabled={clearingId === String(request._id)}
+                                >
+                                  Edit
+                                </Button>
+                              )}
+                              {status === "rejected" && (
+                                <Button
+                                  variant="outline"
+                                  size="xs"
+                                  className="rounded-full px-3 text-[10px]"
+                                  onClick={() => navigate(`/student/teams/request/${request._id}/edit`)}
+                                  disabled={clearingId === String(request._id)}
+                                >
+                                  Resubmit
+                                </Button>
+                              )}
                               <Button
                                 variant="outline"
                                 size="xs"
-                                className="rounded-full px-3 text-[10px]"
-                                onClick={() => navigate(`/student/teams/request/${request._id}/edit`)}
+                                className="rounded-full border-red-100 px-3 text-[10px] text-red-600 hover:bg-red-50"
+                                onClick={() => handleClearRequest(request._id)}
+                                disabled={clearingId === String(request._id)}
                               >
-                                {status === "rejected" ? "Resubmit" : "Edit"}
+                                {clearingId === String(request._id)
+                                  ? "..."
+                                  : status === "pending"
+                                  ? "Cancel"
+                                  : "Clear"}
                               </Button>
-                            )}
+                            </div>
                           </td>
                         </tr>
                       );

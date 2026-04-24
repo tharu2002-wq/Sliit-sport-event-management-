@@ -1,7 +1,8 @@
 const TOKEN_KEY = "sportSync_token";
 const USER_KEY = "sportSync_user";
 
-export function setAuthSession({ token, _id, name, email, role, ...rest }) {
+export function setAuthSession(data) {
+  const { token, _id, name, email, role, ...rest } = data;
   if (token) localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(USER_KEY, JSON.stringify({ _id, name, email, role, ...rest }));
 }
@@ -23,9 +24,12 @@ export function getStoredUser() {
     const raw = localStorage.getItem(USER_KEY);
     if (!raw) return null;
     const user = JSON.parse(raw);
-    if (user && user._id) return user;
-  } catch {
-    /* invalid JSON */
+    const id = user?._id || user?.id;
+    if (user && id) {
+      return { ...user, _id: id };
+    }
+  } catch (err) {
+    // Silence parse errors
   }
   return null;
 }

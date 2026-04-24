@@ -34,3 +34,20 @@ api.interceptors.request.use((config) => {
 
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      const isAuthPath = error.config.url?.includes("/auth/");
+      if (!isAuthPath) {
+        // Clear session on unauthorized (unless it was a login/register attempt)
+        localStorage.removeItem("sportSync_token");
+        localStorage.removeItem("sportSync_user");
+        // Force refresh to trigger AuthContext reset
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(error);
+  }
+);

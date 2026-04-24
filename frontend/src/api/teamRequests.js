@@ -42,3 +42,8 @@ export async function updateTeamRequest(id, payload) {
   const { data } = await api.patch(`/team-requests/${id}`, payload);
   return data;
 }
+
+export async function deleteTeamRequest(id) {
+  const { data } = await api.delete(`/team-requests/${id}`);
+  return data;
+}

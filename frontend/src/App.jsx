@@ -38,11 +38,32 @@ import StudentVenueDetailPage from "./pages/student/venues/StudentVenueDetailPag
 import StudentLeaderboardPage from "./pages/student/leaderboard/StudentLeaderboardPage";
 import StudentProfilePage from "./pages/student/profile/StudentProfilePage";
 import StudentEditProfilePage from "./pages/student/profile/StudentEditProfilePage";
+import { useAuth } from "./contexts/AuthContext";
+
+function AuthRedirectWrapper({ children }) {
+  const { user, isAuthenticated } = useAuth();
+  if (isAuthenticated && user?.role) {
+    if (user.role === "admin" || user.role === "organizer") {
+      return <Navigate to="/admin" replace />;
+    }
+    if (user.role === "student") {
+      return <Navigate to="/student" replace />;
+    }
+  }
+  return children;
+}
 
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
+      <Route
+        path="/"
+        element={
+          <AuthRedirectWrapper>
+            <LandingPage />
+          </AuthRedirectWrapper>
+        }
+      />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route

@@ -30,6 +30,12 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const updateUser = (data) => {
+    const nextUser = { ...user, ...data };
+    setUser(nextUser);
+    setAuthSession(nextUser); // Persistence
+  };
+
   const value = useMemo(
     () => ({
       user,
@@ -37,6 +43,7 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
+      updateUser,
     }),
     [user]
   );
