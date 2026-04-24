@@ -19,7 +19,7 @@ function ActiveBadge({ active }) {
  * Team summary card with image, meta, and link to detail route.
  */
 export function TeamCard({ team, imageSrc, detailTo, className }) {
-  const captainName = team.captain?.fullName ?? "—";
+  const captainName = typeof team.captain === "object" ? team.captain?.fullName ?? "—" : team.captain || "—";
   const memberCount = Array.isArray(team.members) ? team.members.length : 0;
   const summary =
     memberCount === 0
