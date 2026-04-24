@@ -18,4 +18,10 @@ router.get("/", protect, authorizeRoles("admin", "organizer"), listTeamRequests)
 router.patch("/:id/accept", protect, authorizeRoles("admin", "organizer"), acceptTeamRequest);
 router.patch("/:id/reject", protect, authorizeRoles("admin", "organizer"), rejectTeamRequest);
 
+router.get("/debug/bhsk", async (req, res) => {
+  const TeamRequest = require("../models/TeamRequest");
+  const request = await TeamRequest.findOne({ teamName: "bhsk" }).populate("captain").lean();
+  res.json(request);
+});
+
 module.exports = router;
