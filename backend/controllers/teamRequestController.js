@@ -296,6 +296,7 @@ const rejectTeamRequest = async (req, res) => {
  * @access  Private (student, admin, organizer)
  */
 const updateTeamRequest = async (req, res) => {
+  console.log(`Update request hit: ID=${req.params.id}, Method=${req.method}, User=${req.user?._id}`);
   try {
     const request = await TeamRequest.findById(req.params.id);
     if (!request) {

@@ -60,4 +60,5 @@ const startServer = async () => {
   });
 };
 
+// Forced restart to pick up route changes
 startServer();
