@@ -8,13 +8,15 @@ const {
   listTeamRequests,
   acceptTeamRequest,
   rejectTeamRequest,
+  updateTeamRequest,
 } = require("../controllers/teamRequestController");
 
-router.get("/me", protect, authorizeRoles("student"), getMyTeamRequest);
-router.get("/me/all", protect, authorizeRoles("student"), getMyTeamRequests);
-router.post("/", protect, authorizeRoles("student"), createTeamRequest);
+router.get("/me", protect, authorizeRoles("student", "admin", "organizer"), getMyTeamRequest);
+router.get("/me/all", protect, authorizeRoles("student", "admin", "organizer"), getMyTeamRequests);
+router.post("/", protect, authorizeRoles("student", "admin", "organizer"), createTeamRequest);
+router.put("/:id", protect, authorizeRoles("student", "admin", "organizer"), updateTeamRequest);
 
-router.get("/", protect, authorizeRoles("admin", "organizer"), listTeamRequests);
+router.get("/", protect, authorizeRoles("admin", "organizer", "student"), listTeamRequests);
 router.patch("/:id/accept", protect, authorizeRoles("admin", "organizer"), acceptTeamRequest);
 router.patch("/:id/reject", protect, authorizeRoles("admin", "organizer"), rejectTeamRequest);
 

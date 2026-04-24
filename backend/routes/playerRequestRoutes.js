@@ -9,10 +9,10 @@ const {
   rejectPlayerRequest,
 } = require("../controllers/playerRequestController");
 
-router.get("/me", protect, authorizeRoles("student"), getMyPlayerRequest);
-router.post("/", protect, authorizeRoles("student"), createPlayerRequest);
+router.get("/me", protect, authorizeRoles("student", "admin", "organizer"), getMyPlayerRequest);
+router.post("/", protect, authorizeRoles("student", "admin", "organizer"), createPlayerRequest);
 
-router.get("/", protect, authorizeRoles("admin"), listPlayerRequests);
+router.get("/", protect, authorizeRoles("admin", "organizer", "student"), listPlayerRequests);
 router.patch("/:id/accept", protect, authorizeRoles("admin"), acceptPlayerRequest);
 router.patch("/:id/reject", protect, authorizeRoles("admin"), rejectPlayerRequest);
 
