@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createTeamRequest, getMyTeamRequest, getMyTeamRequests } from "../../../api/teamRequests";
+import { createTeamRequest } from "../../../api/teamRequests";
 import { getPlayers } from "../../../api/players";
 import { PlayerPicker } from "../../../components/admin/teams/PlayerPicker";
 import { DashboardPageHeader } from "../../../components/student-dashboard/DashboardPageHeader";
@@ -10,7 +10,6 @@ import { SelectField } from "../../../components/ui/SelectField";
 import { TextField } from "../../../components/ui/TextField";
 import { getApiErrorMessage } from "../../../utils/apiError";
 import { getTitleOrSportTypeError } from "../../../utils/eventValidation";
-import { cn } from "../../../utils/cn";
 
 const SOCIETY_OPTIONS = ["Sliit", "IEEE", "FOSS", "Rotaract", "Leo", "Other"];
 

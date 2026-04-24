@@ -135,6 +135,19 @@ const updateTeam = async (req, res) => {
         if (count !== memberIds.length) {
           return res.status(404).json({ message: "One or more members not found" });
         }
+
+        // Check for conflicts with other active teams
+        const conflicts = await Team.find({
+          _id: { $ne: req.params.id },
+          members: { $in: memberIds },
+          isActive: { $ne: false }
+        }).select("teamName").lean();
+
+        if (conflicts.length > 0) {
+          return res.status(400).json({ 
+            message: `One or more selected players are already assigned to active teams (e.g., ${conflicts[0].teamName})` 
+          });
+        }
       }
       team.members = memberIds;
     }

@@ -60,8 +60,6 @@ export default function AdminTeamCreatePage() {
 
   const memberIdsSet = useMemo(() => new Set(memberIds.map(String)), [memberIds]);
 
-  add
-
   const getAssignedTeamLabel = (player) => {
     if (!Array.isArray(player?.teams) || player.teams.length === 0) return "";
     const firstTeam = player.teams.find((team) => team?.isActive !== false);
