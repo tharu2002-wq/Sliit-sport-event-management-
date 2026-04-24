@@ -32,6 +32,7 @@ const teamRequestSchema = new mongoose.Schema(
     reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     createdTeam: { type: mongoose.Schema.Types.ObjectId, ref: "Team" },
     rejectReason: { type: String, trim: true, default: "" },
+    hiddenByStudent: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
