@@ -163,7 +163,7 @@ const getMyTeamRequest = async (req, res) => {
  */
 const getMyTeamRequests = async (req, res) => {
   try {
-    const requests = await TeamRequest.find({ user: req.user._id })
+    const requests = await TeamRequest.find({ user: req.user._id, hiddenByStudent: { $ne: true } })
       .populate("captain", "fullName studentId email")
       .populate("members", "fullName studentId email")
       .sort({ createdAt: -1 })
@@ -359,6 +359,31 @@ const updateTeamRequest = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Delete (clear) a team request
+ * @route   DELETE /api/team-requests/:id
+ * @access  Private (owner or admin)
+ */
+const deleteTeamRequest = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const request = await TeamRequest.findById(id);
+    if (!request) {
+      return res.status(404).json({ message: "Request not found" });
+    }
+
+    // Mark as hidden
+    request.hiddenByStudent = true;
+    await request.save();
+
+    console.log(`[CLEAR] Successfully hidden ID: ${id}`);
+    return res.status(200).json({ message: "Request cleared from your history" });
+  } catch (error) {
+    console.error(`[CLEAR] Error for ID ${id}:`, error.message);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createTeamRequest,
   getMyTeamRequest,
@@ -367,4 +392,5 @@ module.exports = {
   acceptTeamRequest,
   rejectTeamRequest,
   updateTeamRequest,
+  deleteTeamRequest,
 };
