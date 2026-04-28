@@ -1,9 +1,16 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
+const dns = require("dns");
 const connectDB = require("./config/db");
 
 dotenv.config();
+
+if (process.env.DNS_SERVERS) {
+  console.log(`Setting DNS servers to: ${process.env.DNS_SERVERS}`);
+  dns.setServers(process.env.DNS_SERVERS.split(","));
+}
+
 connectDB();
 
 const app = express();
